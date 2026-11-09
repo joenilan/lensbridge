@@ -1,6 +1,6 @@
 # Lensbridge tool reference
 
-*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (57 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
+*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (58 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
 
 ## Observe
 
@@ -620,4 +620,10 @@ Preview a path in the world: draws the rail with particles (only on this client)
 |---|---|---|---|
 | `name` | string | yes | Saved path name |
 | `seconds` | number |  | Default 10 |
+
+## Other
+
+### `props`
+
+Camera props for behind-the-scenes shots: visible models of the tripods (camera on legs), the drone (spinning rotors) and the current rail. Client-only. Normal shots stay clean: props show only in the player's view if player_view is on, and in captures from 'crew' cameras (e.g. a drone or a tripod named in crew). A camera never sees its own prop.
 

@@ -110,6 +110,7 @@ public final class UserControls {
         Shot s = Tripods.shot(t, 1.0F);
         float fov = t.fov() > 0 ? t.fov() : Minecraft.getInstance().options.fov().get().floatValue();
         startPilot(new Shot(s.pos(), s.yaw(), s.pitch(), 0, fov), 2.5, 14, 0, 0);
+        DirectorCamera.source = name;
         editing = name;
         enterWas = true;
         backWas = true;
@@ -308,6 +309,7 @@ public final class UserControls {
         } else {
             DirectorCamera.set(t.pos(), t.yaw(), t.pitch(), 0, t.fov());
         }
+        DirectorCamera.source = t.name();
     }
 
     /** Keep the player still while flying the drone. */

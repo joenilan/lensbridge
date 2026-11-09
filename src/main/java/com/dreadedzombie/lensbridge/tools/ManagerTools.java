@@ -53,6 +53,7 @@ public final class ManagerTools {
             for (Tripods.Tripod t : list) {
                 Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
                 DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
+                DirectorCamera.source = t.name();
                 Capture.grab(thumb(t.name()), 3);
                 done.add(t.name());
             }
@@ -177,6 +178,29 @@ public final class ManagerTools {
         s.register(new Tool("exit_camera", "Return the player to their own view from any camera mode (edit -> cancel, drone -> land, "
                 + "preview -> off). Same as pressing Esc in game.", new Schema().build(),
                 a -> Result.text(Game.call(UserControls::exitCameraMode) ? "Back to the player's view" : "Already on the player's view")));
+
+        s.register(new Tool("props", "Camera props for behind-the-scenes shots: visible models of the tripods (camera on "
+                + "legs), the drone (spinning rotors) and the current rail. Client-only. Normal shots stay clean: props show "
+                + "only in the player's view if player_view is on, and in captures from 'crew' cameras (e.g. a drone or a "
+                + "tripod named in crew). A camera never sees its own prop.",
+                new Schema().prop("enabled", "boolean", "Turn props on/off")
+                        .prop("player_view", "boolean", "Show them in the player's own view (setup)")
+                        .prop("crew", "array", "Cameras that see the props: 'director', 'drone' or tripod names; [] = none")
+                        .build(),
+                a -> {
+                    if (a.has("enabled")) {
+                        com.dreadedzombie.lensbridge.cinema.Props.enabled = a.bool("enabled", false);
+                    }
+                    if (a.has("player_view")) {
+                        com.dreadedzombie.lensbridge.cinema.Props.playerView = a.bool("player_view", false);
+                    }
+                    if (a.has("crew")) {
+                        com.dreadedzombie.lensbridge.cinema.Props.crew.clear();
+                        a.arr("crew").forEach(e -> com.dreadedzombie.lensbridge.cinema.Props.crew.add(e.getAsString()));
+                    }
+                    Game.waitFrames(2);
+                    return Result.text(Game.call(com.dreadedzombie.lensbridge.cinema.Props::describe));
+                }));
 
         s.register(new Tool("tripod_preview", "Show a tripod's view live on the player's screen (or 'off' to return to the player).",
                 new Schema().prop("name", "string", "Tripod name, omit to turn preview off").build(), a -> {

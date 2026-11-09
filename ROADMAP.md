@@ -46,7 +46,8 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] Tested live: aerial follow of a sprinting player + Lumens, dronie, top-down, 4-tripod stills, 4-angle 3 s multicam
 - [x] 0.3.1: true-speed video. Frames stream to ffmpeg (no PNG per frame); `record` is real time (late frames repeated); renders keep the world in sync (tick-rate scaling + real-time pacing) with `world` = sync/step/frozen/free; timelapse only via `timelapse_interval`
 - [x] Fix: the first frames of `capture_program` showed the pre-reset view (pre-roll at t=0), and orbits had occasional repeated frames (2-frame settle)
-- [ ] Visible drone/tripod models for other players (optional "behind the scenes" shots)
+- [x] Camera props for behind-the-scenes shots (`props`): tripod/drone/rail models, client-only, seen only by crew cameras (never their own) and optionally the player
+- [ ] Camera Manager switch for props + a hotkey
 
 ## 0.4: Showcase Stages for modmakers (owner's headline idea, 2026-11-09)
 

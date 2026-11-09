@@ -191,6 +191,7 @@ public final class DroneTools {
                         for (Tripods.Tripod t : list) {
                             Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
                             DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
+                                DirectorCamera.source = t.name();
                             files.add(Capture.grab(Capture.dir("screenshots").resolve(prefix + "_" + t.name() + ".png"), 3));
                         }
                     } finally {
@@ -247,6 +248,7 @@ public final class DroneTools {
                             for (Tripods.Tripod t : list) {
                                 Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
                                 DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
+                                DirectorCamera.source = t.name();
                                 try (var img = Capture.grabImage(i == 0 ? 4 : 2)) {
                                     out.get(t.name()).write(img);
                                 }

@@ -21,7 +21,14 @@ public final class DirectorCamera {
     private DirectorCamera() {
     }
 
+    /**
+     * Which camera is being looked through: "director" (free AI camera), "drone", a tripod name, or "player" when the
+     * director camera isn't shown. Camera props use it to hide a camera's own prop and to decide who sees props.
+     */
+    public static volatile String source = "director";
+
     public static void set(Vec3 p, float y, float pi, float r, float f) {
+        source = "director";
         program = null;
         pos = p;
         yaw = y;
@@ -41,9 +48,11 @@ public final class DirectorCamera {
 
     /** Advance live programs every frame (even while not shown, so drones keep flying). */
     static void onFramePre(net.neoforged.neoforge.client.event.RenderFrameEvent.Pre event) {
+        float pt = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         if (active) {
-            frame(event.getPartialTick().getGameTimeDeltaPartialTick(false));
+            frame(pt);
         }
+        com.dreadedzombie.lensbridge.cinema.Props.frame(pt);
     }
 
     public static void release() {
@@ -64,6 +73,7 @@ public final class DirectorCamera {
     public static volatile boolean programFinished;
 
     public static void play(com.dreadedzombie.lensbridge.cinema.CameraProgram p) {
+        source = p instanceof com.dreadedzombie.lensbridge.cinema.Drone ? "drone" : "director";
         last = null;
         programFinished = false;
         programStart = System.nanoTime();

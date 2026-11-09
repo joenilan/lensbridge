@@ -5,6 +5,9 @@
   "client": [
     "CameraMixin",
     "DeltaTrackerTimerMixin",
+    "DisplayAccessor",
+    "EntityRenderDispatcherMixin",
+    "ItemDisplayAccessor",
     "MinecraftMixin",
     "RenderSystemMixin"
   ],

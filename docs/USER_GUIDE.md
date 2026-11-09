@@ -101,13 +101,17 @@ While flying, you can press **Alt+R** to record, or **Alt+T** to drop a camera a
 
 ---
 
-## 6. Getting out of anything
+## 6. Seeing your cameras in the world
+
+Lensbridge can show your cameras as little props: each tripod as a camera on legs, the drone with spinning rotors. They exist only on your computer; servers and other players never see them. Your own shots stay clean: a camera never films the props unless you (or your assistant) make it a "crew" camera for behind-the-scenes footage. Ask your assistant to "show the camera props", or use the `props` tool.
+
+## 7. Getting out of anything
 
 **Press Esc.** In any camera mode (taking control, drone, looking through a camera), Esc takes you back to your own view instead of opening the pause menu. **Backspace** works too, and so does the **Back to my view** button in the Camera Manager.
 
 ---
 
-## 7. Letting an AI assistant help
+## 8. Letting an AI assistant help
 
 Lensbridge can be connected to an AI assistant such as Claude (it speaks "MCP"). The assistant can:
 - take screenshots of the game to check how things look
@@ -131,7 +135,7 @@ claude mcp add --transport http lensbridge http://127.0.0.1:25599/mcp --header "
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -146,7 +150,7 @@ claude mcp add --transport http lensbridge http://127.0.0.1:25599/mcp --header "
 
 ---
 
-## 9. Config file (`config/lensbridge.json`)
+## 10. Config file (`config/lensbridge.json`)
 
 | Setting | Default | Meaning |
 |---|---|---|

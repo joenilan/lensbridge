@@ -86,6 +86,7 @@ scene  {"freeze":false} ; camera_release
 - Live moves (`camera_orbit`, `camera_rail`, `camera_follow`, `drone_fly`...) keep running in the background. Render them with `capture_program`, or film them live with `record`.
 - **Drone** for organic aerial footage: `follow` (auto aerial follow-me), `dronie`, `reveal`, `topdown`, `orbit`, `mission` (waypoints), `fpv`. **Rails and orbits** for precise, repeatable moves.
 - **Multicam** = the same action from every enabled tripod, in sync, one MP4 per angle.
+- **Behind-the-scenes shots:** `props {"enabled":true,"crew":["drone"]}` shows camera props (tripods as cameras on legs, the drone with spinning rotors, the current rail as markers). Only the cameras listed in `crew` see them (`director`, `drone` or tripod names), a camera never sees its own prop, and the player sees them only with `player_view`. So multicam and tripod shots stay clean while a crew drone films the rig. Turn them off afterwards.
 - **Turntables of a mob:** `capture_orbit {"target":{"entity":id}, "fps":60, "frames":240, "world":"step"}`.
   - `auto_center` (on by default with an entity target) finds where the *model* really is, which is often well above or beside the entity's position, and picks a radius so it fills ~70% of the frame. Pass `radius`/`height` to override.
   - `step` at 60 fps is perfectly smooth: the world advances exactly 20/60 tick per frame with interpolated animation.
