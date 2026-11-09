@@ -13,6 +13,7 @@
 | Key | Action |
 |---|---|
 | Alt+C | Camera Manager |
+| Alt+P | Show cameras in world (props) |
 | Alt+T | Place camera |
 | Alt+N | Cycle cameras |
 | Alt+D | Drone |
@@ -131,6 +132,7 @@ There are also group enable/disable controls and **Shoot enabled**. Thumbnails r
 | **Alt+N** | Cycle through tripod views, then back to you |
 | **Alt+R** | Start/stop recording (30 fps, HUD hidden) → MP4 in `lensbridge/videos/` |
 | **Alt+C** | Open the Camera Manager in your browser |
+| **Alt+P** | Show or hide your cameras as props in the world (your shots stay clean) |
 
 A small HUD shows drone telemetry, the active camera and recording time; it's hidden whenever the HUD is hidden.
 
