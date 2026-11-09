@@ -154,7 +154,14 @@ scene        {"freeze":false}
 camera_release {}
 ```
 
-`capture_orbit` and `capture_path` render frame by frame (not in real time), so they come out smooth however slow the machine is. Freeze the world first for perfectly still subjects, or leave it running for life.
+**Speed is always true unless you ask for a timelapse.**
+- `record` captures in **real time**: frames stream straight into ffmpeg, and if a grab is late the previous frame is repeated, so a 7 s clip is exactly 7 s of game time.
+- `capture_orbit`, `capture_path`, `capture_program` and `multicam` render frame by frame, so the camera is always smooth. `world` controls the world during the render:
+  - `sync` (default): the server tick rate is scaled to the capture speed, and frames are paced when capture is faster than real time, so mobs move at their true speed.
+  - `step`: frozen, then stepped exactly 20/fps ticks per frame, for perfect smoothness.
+  - `frozen`: everything held still.
+  - `free`: the world runs at full speed = a timelapse look.
+- **Timelapse on purpose:** `record {"seconds":120,"timelapse_interval":2}` takes one frame every 2 s of game time.
 
 ---
 

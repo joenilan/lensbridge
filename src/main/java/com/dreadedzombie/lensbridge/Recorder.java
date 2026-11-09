@@ -36,31 +36,13 @@ public final class Recorder {
         startedAt = System.currentTimeMillis();
         frameCount = 0;
         Thread t = new Thread(() -> {
-            Path dir = Capture.dir("frames").resolve(name);
-            boolean before = Game.call(() -> Game.mc().options.hideGui);
-            if (hideHud) {
-                Game.run(() -> Game.mc().options.hideGui = true);
-            }
-            List<Path> files = new ArrayList<>();
             try {
-                long t0 = System.nanoTime();
-                for (int i = 0; RUNNING.get() && (maxSeconds <= 0 || i < maxSeconds * fps); i++) {
-                    long due = t0 + (long) (i * 1e9 / fps);
-                    long now = System.nanoTime();
-                    if (due > now) {
-                        Game.sleep((due - now) / 1_000_000L);
-                    }
-                    files.add(Capture.grab(dir.resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), i == 0 ? 4 : 1));
-                    frameCount = files.size();
-                }
-                Path video = Capture.encode(dir, fps, Capture.dir("videos").resolve(name + ".mp4"), false);
-                done.accept(video.toString());
+                var result = com.dreadedzombie.lensbridge.tools.Rendering.record(name, fps, maxSeconds > 0 ? maxSeconds : 3600,
+                        0, hideHud, false, RUNNING::get);
+                done.accept(Capture.dir("videos").resolve(name + ".mp4").toString());
             } catch (RuntimeException e) {
                 done.accept("Recording failed: " + e.getMessage());
             } finally {
-                if (hideHud) {
-                    Game.run(() -> Game.mc().options.hideGui = before);
-                }
                 RUNNING.set(false);
             }
         }, "lensbridge-recorder");

@@ -299,7 +299,7 @@ public final class Tools {
                         .prop("frames", "integer", "Frame count (default 120)").prop("fps", "integer", "Playback fps (default 30)")
                         .prop("start_angle", "number", "Degrees (default 0)").prop("sweep", "number", "Degrees to travel (default 360)")
                         .prop("fov", "number", "Degrees").prop("name", "string", "Output name")
-                        .prop("gif", "boolean", "Also make a GIF").prop("hide_hud", "boolean", "default true").build(),
+                        .prop("gif", "boolean", "Also make a GIF").prop("hide_hud", "boolean", "default true").prop("world", "string", Rendering.WORLD_DOC).build(),
                 a -> {
                     Vec3 c = new Vec3(a.num("cx"), a.num("cy"), a.num("cz"));
                     double r = a.num("radius", 4);
@@ -316,7 +316,7 @@ public final class Tools {
                         shots.add(new Shot(cam, yp[0], yp[1], 0, fov));
                     }
                     return render(shots, a.str("name", "orbit_" + Capture.stamp()), a.i("fps", 30), a.bool("gif", false),
-                            a.bool("hide_hud", true));
+                            a.bool("hide_hud", true), a.str("world", "sync"));
                 }));
 
         s.register(new Tool("capture_path", "Cinematic camera move through keyframes, saved frame by frame and encoded to MP4. "
@@ -326,7 +326,7 @@ public final class Tools {
                         .prop("seconds", "number", "Duration (default 6)").prop("fps", "integer", "Default 30")
                         .prop("easing", "string", "smooth (ease in/out, default) | linear")
                         .prop("name", "string", "Output name").prop("gif", "boolean", "Also make a GIF")
-                        .prop("hide_hud", "boolean", "default true").build(),
+                        .prop("hide_hud", "boolean", "default true").prop("world", "string", Rendering.WORLD_DOC).build(),
                 a -> {
                     CameraPath path = a.has("path") ? CinemaTools.loadPath(a.str("path")) : CameraPath.parse(a.arr("keyframes"));
                     int fps = a.i("fps", 30);
@@ -340,38 +340,19 @@ public final class Tools {
                         }
                         shots.add(path.sample(t));
                     }
-                    return render(shots, a.str("name", "path_" + Capture.stamp()), fps, a.bool("gif", false), a.bool("hide_hud", true));
+                    return render(shots, a.str("name", "path_" + Capture.stamp()), fps, a.bool("gif", false), a.bool("hide_hud", true),
+                            a.str("world", "sync"));
                 }));
 
-        s.register(new Tool("record", "Record the live view (player camera or director camera) in real time for N seconds "
-                + "and encode to MP4 - for gameplay clips (riding, swarms at a lantern...).",
-                new Schema().prop("seconds", "number", "Default 5").prop("fps", "integer", "Default 20")
+        s.register(new Tool("record", "Record the live view (player camera, director camera, drone...) in REAL TIME - the clip "
+                + "lasts exactly as long as the action (late frames are repeated, never sped up). Set timelapse_interval for a timelapse.",
+                new Schema().prop("seconds", "number", "Default 5").prop("fps", "integer", "Default 30")
+                        .prop("timelapse_interval", "number", "Only for timelapses: seconds of game time between frames (e.g. 2)")
                         .prop("name", "string", "Output name").prop("hide_hud", "boolean", "default false")
                         .prop("gif", "boolean", "Also make a GIF").build(),
-                a -> {
-                    int fps = a.i("fps", 20);
-                    int frames = (int) Math.round(a.num("seconds", 5) * fps);
-                    String name = a.str("name", "clip_" + Capture.stamp());
-                    Path dir = Capture.dir("frames").resolve(name);
-                    boolean hide = a.bool("hide_hud", false);
-                    boolean before = Game.call(() -> mc().options.hideGui);
-                    Game.run(() -> mc().options.hideGui = hide);
-                    List<Path> files = new ArrayList<>();
-                    try {
-                        long t0 = System.nanoTime();
-                        for (int i = 0; i < frames; i++) {
-                            long due = t0 + (long) (i * 1e9 / fps);
-                            long now = System.nanoTime();
-                            if (due > now) {
-                                Game.sleep((due - now) / 1_000_000L);
-                            }
-                            files.add(Capture.grab(dir.resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), i == 0 ? 4 : 1));
-                        }
-                    } finally {
-                        Game.run(() -> mc().options.hideGui = before);
-                    }
-                    return finish(files, dir, name, fps, a.bool("gif", false));
-                }));
+                a -> Rendering.record(a.str("name", (a.num("timelapse_interval", 0) > 0 ? "timelapse_" : "clip_") + Capture.stamp()),
+                        a.i("fps", 30), a.num("seconds", 5), a.num("timelapse_interval", 0), a.bool("hide_hud", false),
+                        a.bool("gif", false), () -> true)));
 
         s.register(new Tool("list_captures", "List recent captures (screenshots, videos, frame folders) with full paths.",
                 new Schema().prop("limit", "integer", "Default 20").build(),
@@ -392,43 +373,19 @@ public final class Tools {
 
     // ------------------------------------------------------------------ capture helpers
 
-    /** Render a list of director-camera shots to numbered frames, then encode. */
-    public static Result render(List<Shot> shots, String name, int fps, boolean gif, boolean hideHud) {
-        Path dir = Capture.dir("frames").resolve(name);
+    /** Render director-camera shots frame by frame (world kept in sync by default). */
+    public static Result render(List<Shot> shots, String name, int fps, boolean gif, boolean hideHud, String world) {
         boolean wasActive = DirectorCamera.active;
-        boolean hudBefore = Game.call(() -> mc().options.hideGui);
-        Game.run(() -> mc().options.hideGui = hideHud);
-        List<Path> files = new ArrayList<>();
         try {
-            for (int i = 0; i < shots.size(); i++) {
-                Shot s = shots.get(i);
-                DirectorCamera.set(s.pos(), s.yaw(), s.pitch(), s.roll(), s.fov());
-                files.add(Capture.grab(dir.resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), i == 0 ? 6 : 1));
-            }
+            return Rendering.render(name, fps, shots.size(), i -> {
+                Shot sh = shots.get(i);
+                DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), sh.roll(), sh.fov());
+            }, world, hideHud, gif);
         } finally {
-            Game.run(() -> mc().options.hideGui = hudBefore);
             if (!wasActive) {
                 DirectorCamera.release();
             }
         }
-        return finish(files, dir, name, fps, gif);
-    }
-
-    public static Result finish(List<Path> files, Path dir, String name, int fps, boolean gif) {
-        Path videos = Capture.dir("videos");
-        StringBuilder sb = new StringBuilder(files.size() + " frames in " + dir + "\n");
-        try {
-            Path mp4 = Capture.encode(dir, fps, videos.resolve(name + ".mp4"), false);
-            sb.append("Video: ").append(mp4).append('\n');
-            if (gif) {
-                sb.append("GIF: ").append(Capture.encode(dir, fps, videos.resolve(name + ".gif"), true)).append('\n');
-            }
-        } catch (RuntimeException e) {
-            sb.append("Encoding skipped: ").append(e.getMessage()).append('\n');
-        }
-        Path sheet = Capture.contactSheet(files, 9, videos.resolve(name + "_sheet.png"));
-        sb.append("Contact sheet: ").append(sheet);
-        return Result.text(sb.toString()).addImage(sheet, previewEdge());
     }
 
     // ------------------------------------------------------------------ text helpers

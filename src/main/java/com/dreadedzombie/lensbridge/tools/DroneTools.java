@@ -200,7 +200,7 @@ public final class DroneTools {
                     return Result.text(sb + "Sheet: " + sheet).addImage(sheet, com.dreadedzombie.lensbridge.Lensbridge.config().previewMaxEdge);
                 }));
 
-        s.register(new Tool("multicam", "Synced multi-angle VIDEO: freezes the world and, tick by tick, renders every tripod's view, "
+        s.register(new Tool("multicam", "Synced multi-angle VIDEO at true world speed: freezes the world and, tick by tick, renders every tripod's view, "
                 + "so you get one MP4 per angle with identical action (perfect for editing between angles). Needs op.",
                 new Schema().prop("seconds", "number", "Default 5").prop("fps", "integer", "Default 20 (1 world tick per frame)")
                         .prop("names", "array", "Tripod names (default all)").prop("name", "string", "Output prefix").build(),
@@ -209,43 +209,52 @@ public final class DroneTools {
                     int fps = a.i("fps", 20);
                     int frames = (int) Math.round(a.num("seconds", 5) * fps);
                     String prefix = a.str("name", "multicam_" + Capture.stamp());
-                    Map<String, List<Path>> out = new LinkedHashMap<>();
-                    list.forEach(t -> out.put(t.name(), new ArrayList<>()));
+                    Map<String, com.dreadedzombie.lensbridge.VideoStream> out = new LinkedHashMap<>();
                     boolean hud = Game.call(() -> Game.mc().options.hideGui);
                     Game.run(() -> {
                         Game.mc().options.hideGui = true;
                         Game.mc().player.connection.sendCommand("tick freeze");
                     });
                     Game.sleep(300);
+                    double ticksPerFrame = 20.0 / fps;
+                    double debt = 0;
                     try {
+                        for (Tripods.Tripod t : list) {
+                            out.put(t.name(), Capture.stream(prefix + "_" + t.name(), fps));
+                        }
                         for (int i = 0; i < frames; i++) {
                             for (Tripods.Tripod t : list) {
                                 Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
                                 DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
-                                out.get(t.name()).add(Capture.grab(Capture.dir("frames").resolve(prefix + "_" + t.name())
-                                        .resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), i == 0 ? 4 : 2));
+                                try (var img = Capture.grabImage(i == 0 ? 4 : 2)) {
+                                    out.get(t.name()).write(img);
+                                }
                             }
-                            Game.run(() -> Game.mc().player.connection.sendCommand("tick step 1"));
-                            Game.sleep(70);
+                            debt += ticksPerFrame;          // world advances exactly 1/fps seconds per frame
+                            int whole = (int) Math.floor(debt);
+                            if (whole > 0) {
+                                debt -= whole;
+                                Game.run(() -> Game.mc().player.connection.sendCommand("tick step " + whole));
+                                Game.sleep(55L * whole);
+                            }
                         }
                     } finally {
+                        out.values().forEach(com.dreadedzombie.lensbridge.VideoStream::close);
                         Game.run(() -> {
                             Game.mc().options.hideGui = hud;
                             Game.mc().player.connection.sendCommand("tick unfreeze");
                         });
                         DirectorCamera.release();
                     }
-                    StringBuilder sb = new StringBuilder(frames + " frames x " + list.size() + " angles\n");
+                    StringBuilder sb = new StringBuilder(String.format(Locale.ROOT,
+                            "%d frames x %d angles = %.1fs per angle at true world speed%n", frames, list.size(), frames / (double) fps));
                     List<Path> firsts = new ArrayList<>();
                     for (var e : out.entrySet()) {
-                        Path dir = Capture.dir("frames").resolve(prefix + "_" + e.getKey());
-                        try {
-                            sb.append(e.getKey()).append(": ").append(Capture.encode(dir, fps,
-                                    Capture.dir("videos").resolve(prefix + "_" + e.getKey() + ".mp4"), false)).append('\n');
-                        } catch (RuntimeException ex) {
-                            sb.append(e.getKey()).append(": encode failed ").append(ex.getMessage()).append('\n');
+                        sb.append(e.getKey()).append(": ").append(e.getValue().file()).append('\n');
+                        List<Path> th = Capture.thumbnails(e.getValue().file(), frames, 3);
+                        if (!th.isEmpty()) {
+                            firsts.add(th.get(th.size() / 2));
                         }
-                        firsts.add(e.getValue().get(e.getValue().size() / 2));
                     }
                     Path sheet = Capture.contactSheet(firsts, firsts.size(), Capture.dir("videos").resolve(prefix + "_angles.png"));
                     return Result.text(sb + "Angles sheet: " + sheet).addImage(sheet, com.dreadedzombie.lensbridge.Lensbridge.config().previewMaxEdge);

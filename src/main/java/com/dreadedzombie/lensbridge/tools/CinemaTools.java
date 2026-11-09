@@ -198,10 +198,11 @@ public final class CinemaTools {
                         a.num("seconds", 4), (float) a.num("fov", 30)))));
 
         s.register(new Tool("capture_program", "Render the currently playing camera move (orbit/pan/rail/follow/dolly/lock) frame by "
-                + "frame at an exact frame rate, then encode to MP4. For moving subjects, freeze the world (scene freeze) and set "
-                + "tick_step=1 at fps 20 so every frame advances the world exactly one tick - perfectly smooth motion.",
+                + "frame at an exact frame rate, then encode to MP4. The world is kept at its true speed (world=sync) so mobs move "
+                + "naturally; world=step gives perfectly smooth motion; world=free is a timelapse look.",
                 new Schema().prop("seconds", "number", "Length (default: the move's own duration, or 6)").prop("fps", "integer", "Default 30")
-                        .prop("tick_step", "integer", "World ticks to step per frame while frozen (needs op; default 0)")
+                        .prop("world", "string", Rendering.WORLD_DOC)
+                        .prop("tick_step", "integer", "Legacy: >0 = world 'step'")
                         .prop("name", "string", "Output name").prop("gif", "boolean", "Also make a GIF").prop("hide_hud", "boolean", "default true").build(),
                 a -> {
                     CameraProgram p = DirectorCamera.program;
@@ -211,26 +212,14 @@ public final class CinemaTools {
                     int fps = a.i("fps", 30);
                     double secs = a.num("seconds", p.duration() > 0 ? p.duration() : 6);
                     int frames = Math.max(2, (int) Math.round(secs * fps));
-                    int step = a.i("tick_step", 0);
-                    String name = a.str("name", "move_" + Capture.stamp());
-                    Path dir = Capture.dir("frames").resolve(name);
-                    boolean hud = Game.call(() -> Game.mc().options.hideGui);
-                    Game.run(() -> Game.mc().options.hideGui = a.bool("hide_hud", true));
-                    List<Path> files = new ArrayList<>();
+                    String world = a.has("tick_step") && a.i("tick_step", 0) > 0 ? "step" : a.str("world", "sync");
                     try {
-                        for (int i = 0; i < frames; i++) {
-                            DirectorCamera.manualTime = (double) i / fps;
-                            if (step > 0 && i > 0) {
-                                Game.run(() -> Game.mc().player.connection.sendCommand("tick step " + step));
-                                Game.sleep(60L * step);
-                            }
-                            files.add(Capture.grab(dir.resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), i == 0 ? 6 : 2));
-                        }
+                        return Rendering.render(a.str("name", "move_" + Capture.stamp()), fps, frames,
+                                i -> DirectorCamera.manualTime = (double) i / fps, world, a.bool("hide_hud", true), a.bool("gif", false));
                     } finally {
                         DirectorCamera.manualTime = null;
-                        Game.run(() -> Game.mc().options.hideGui = hud);
                     }
-                    return Tools.finish(files, dir, name, fps, a.bool("gif", false));
+
                 }));
 
         // ------------------------------------------------------------------ paths

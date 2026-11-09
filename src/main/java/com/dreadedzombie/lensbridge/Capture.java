@@ -58,6 +58,49 @@ public final class Capture {
         }
     }
 
+    /** Grab the current frame as an image (caller must close it). Off-thread. */
+    public static NativeImage grabImage(int settleFrames) {
+        if (settleFrames > 0) {
+            Game.waitFrames(settleFrames);
+        }
+        CompletableFuture<NativeImage> image = new CompletableFuture<>();
+        Game.run(() -> Screenshot.takeScreenshot(Game.mc().getMainRenderTarget(), image::complete));
+        try {
+            return image.get(10, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw new RuntimeException("Frame grab failed: " + e.getMessage(), e);
+        }
+    }
+
+    /** Start a streamed MP4 sized to the current window. */
+    public static VideoStream stream(String name, int fps) {
+        int[] size = Game.call(() -> new int[]{Game.mc().getMainRenderTarget().width, Game.mc().getMainRenderTarget().height});
+        return new VideoStream(dir("videos").resolve(name + ".mp4"), size[0], size[1], fps);
+    }
+
+    /** Pull {@code count} evenly spaced stills out of a finished video (for contact sheets). */
+    public static List<Path> thumbnails(Path video, int totalFrames, int count) {
+        Path dir = dir("frames").resolve(video.getFileName().toString().replace(".mp4", "") + "_thumbs");
+        int step = Math.max(1, totalFrames / Math.max(1, count));
+        List<String> cmd = List.of(Lensbridge.config().ffmpeg, "-y", "-loglevel", "error", "-i", video.toString(),
+                "-vf", "select=not(mod(n\\," + step + ")),scale=640:-1", "-vsync", "vfr", "-frames:v", String.valueOf(count),
+                dir.resolve("thumb_%02d.png").toString());
+        try {
+            Files.createDirectories(dir);
+            Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
+            p.getInputStream().readAllBytes();
+            p.waitFor(2, TimeUnit.MINUTES);
+            try (var files = Files.list(dir)) {
+                return files.filter(f -> f.getFileName().toString().startsWith("thumb_")).sorted().toList();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return List.of();
+        }
+    }
+
     /** Grab with the HUD temporarily hidden (restores the previous setting). */
     public static Path grabClean(Path file, boolean hideHud, int settleFrames) {
         boolean before = Game.call(() -> Game.mc().options.hideGui);
