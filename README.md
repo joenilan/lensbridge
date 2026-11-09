@@ -103,26 +103,26 @@ Targets everywhere: `{"entity": id}`, `{"nearest": "mothlight:lumen"}`, `{"point
 
 ### Camera Manager (browser panel)
 
-Press **M** in game (or open `http://127.0.0.1:25599/ui#<token>`). Every camera appears as a card with a thumbnail, grouped by name prefix. On each card you can:
+Press **Alt+C** in game (or open `http://127.0.0.1:25599/ui#<token>`). Every camera appears as a card with a thumbnail, grouped by name prefix. On each card you can:
 - turn it on or off (shoots and multicam use enabled cameras)
 - edit x/y/z/yaw/pitch/FOV
 - nudge it (fwd/back/left/right/up/down, yaw, tilt, zoom); the thumbnail re-renders automatically
 - show it on your screen
 - **✋ Take control:** your in-game view becomes that camera. Fly it precisely (WASD/Space/Shift, Sprint for speed, mouse to look, **scroll to zoom**), then press **Enter** to save the view into the camera or **Backspace** to cancel. You're dropped back to your own view, the thumbnail refreshes, and the panel updates. There are Save/Cancel buttons in the panel too.
-- **save your current view** into it (fly the drone with K, find the angle, click)
+- **save your current view** into it (fly the drone with Alt+D, find the angle, click)
 - delete it
 
 There are also group enable/disable controls and **Shoot enabled**. Thumbnails render in stealth, so your screen never changes. The same functions are available to AI as `tripod_all`, `tripod_update`, `tripod_nudge`, `tripod_thumbs`, `tripod_preview` and `tripod_set_from_view`.
 
 ### In-game camera controls (for players)
 
-| Key (rebindable, "Lensbridge Camera") | Action |
+| Key (rebindable, "Lensbridge Camera"; all use Alt so they don't clash with map/minimap mods) | Action |
 |---|---|
-| **K** | Fly the drone: WASD fly, Space/Shift up/down, Sprint fast, mouse = yaw + gimbal. Your player stays put. K lands. |
-| **Y** | Place a tripod at the current view |
-| **U** | Cycle through tripod views, then back to you |
-| **J** | Start/stop recording (30 fps, HUD hidden) → MP4 in `lensbridge/videos/` |
-| **M** | Open the Camera Manager in your browser |
+| **Alt+D** | Fly the drone: WASD fly, Space/Shift up/down, Sprint fast, mouse = yaw + gimbal. Your player stays put. Alt+D lands. |
+| **Alt+T** | Place a tripod at the current view |
+| **Alt+N** | Cycle through tripod views, then back to you |
+| **Alt+R** | Start/stop recording (30 fps, HUD hidden) → MP4 in `lensbridge/videos/` |
+| **Alt+C** | Open the Camera Manager in your browser |
 
 A small HUD shows drone telemetry, the active camera and recording time; it's hidden whenever the HUD is hidden.
 

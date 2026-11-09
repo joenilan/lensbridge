@@ -27,11 +27,17 @@ import org.lwjgl.glfw.GLFW;
  */
 public final class UserControls {
     static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(Lensbridge.MODID, "camera"));
-    static final KeyMapping DRONE = new KeyMapping("key.lensbridge.drone", GLFW.GLFW_KEY_K, CATEGORY);
-    static final KeyMapping TRIPOD = new KeyMapping("key.lensbridge.tripod", GLFW.GLFW_KEY_Y, CATEGORY);
-    static final KeyMapping CYCLE = new KeyMapping("key.lensbridge.cycle", GLFW.GLFW_KEY_U, CATEGORY);
-    static final KeyMapping RECORD = new KeyMapping("key.lensbridge.record", GLFW.GLFW_KEY_J, CATEGORY);
-    static final KeyMapping MANAGER = new KeyMapping("key.lensbridge.manager", GLFW.GLFW_KEY_M, CATEGORY);
+    // Alt + key by default: plain letters collide with map/minimap mods (M = map, U/Y = Xaero, J = JourneyMap)
+    private static KeyMapping alt(String name, int key) {
+        return new KeyMapping(name, net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME,
+                net.neoforged.neoforge.client.settings.KeyModifier.ALT, InputConstants.Type.KEYSYM, key, CATEGORY);
+    }
+
+    static final KeyMapping DRONE = alt("key.lensbridge.drone", GLFW.GLFW_KEY_D);
+    static final KeyMapping TRIPOD = alt("key.lensbridge.tripod", GLFW.GLFW_KEY_T);
+    static final KeyMapping CYCLE = alt("key.lensbridge.cycle", GLFW.GLFW_KEY_N);
+    static final KeyMapping RECORD = alt("key.lensbridge.record", GLFW.GLFW_KEY_R);
+    static final KeyMapping MANAGER = alt("key.lensbridge.manager", GLFW.GLFW_KEY_C);
 
     private static boolean piloting;
     private static float lockYaw;
@@ -161,7 +167,7 @@ public final class UserControls {
                 Shot from = DirectorCamera.active
                         ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
                 startPilot(from, 6);
-                say("Drone up: WASD fly, Space/Shift up/down, Sprint = fast, mouse = yaw + gimbal, K to land");
+                say("Drone up: WASD fly, Space/Shift up/down, Sprint = fast, mouse = yaw + gimbal, Alt+D to land");
             }
         }
         while (TRIPOD.consumeClick()) {
@@ -169,7 +175,7 @@ public final class UserControls {
                     ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
             String name = Tripods.nextName();
             Tripods.put(new Tripods.Tripod(name, v.pos(), v.yaw(), v.pitch(), v.fov(), null));
-            say("Placed " + name + " here (" + Tripods.all().size() + " tripods). U cycles through them.");
+            say("Placed " + name + " here (" + Tripods.all().size() + " tripods). Alt+N cycles through them.");
         }
         while (CYCLE.consumeClick()) {
             List<Tripods.Tripod> list = new ArrayList<>(Tripods.all().values());
@@ -180,7 +186,7 @@ public final class UserControls {
             if (list.isEmpty() || tripodIndex >= list.size()) {
                 tripodIndex = -1;
                 DirectorCamera.release();
-                say(list.isEmpty() ? "No tripods yet - press Y to place one" : "Back to your view");
+                say(list.isEmpty() ? "No tripods yet - press Alt+T to place one" : "Back to your view");
             } else {
                 Tripods.Tripod t = list.get(tripodIndex);
                 viewTripod(t);
@@ -205,7 +211,7 @@ public final class UserControls {
                         pl.displayClientMessage(Component.literal("[Lensbridge] Saved video: " + result), false);
                     }
                 }));
-                say("Recording (HUD hidden) - press J to stop");
+                say("Recording (HUD hidden) - press Alt+R to stop");
             }
         }
 
@@ -282,11 +288,11 @@ public final class UserControls {
         if (DirectorCamera.program instanceof Drone d) {
             lines.add("● DRONE " + d.telemetry());
             if (piloting()) {
-                lines.add("WASD fly  Space/Shift up/down  Sprint fast  mouse yaw+gimbal  K land");
+                lines.add("WASD fly  Space/Shift up/down  Sprint fast  mouse yaw+gimbal  Alt+D land");
             }
         } else if (DirectorCamera.active) {
             lines.add("■ CAMERA " + (DirectorCamera.program != null ? DirectorCamera.program.describe() : "fixed")
-                    + (tripodIndex >= 0 ? "  (U next)" : ""));
+                    + (tripodIndex >= 0 ? "  (Alt+N next)" : ""));
         }
         if (Recorder.running()) {
             lines.add(String.format(Locale.ROOT, "● REC %.1fs", Recorder.seconds()));
