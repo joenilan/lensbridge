@@ -24,10 +24,18 @@ public final class Rendering {
     }
 
     public static final String WORLD_DOC = "World speed during the render: sync (default - mobs move at true speed), frozen "
-            + "(world held still), step (frozen + exactly one tick per 1/20 s of video - perfect smoothness), free (world runs at "
+            + "(world held still), step (frozen + world advanced exactly 20/fps ticks per frame, interpolated - perfectly smooth at any fps, e.g. 60), free (world runs at "
             + "full speed = timelapse look). sync/frozen/step need op.";
 
-    private static void cmd(String c) {
+    /** Partial tick forced on the renderer during a step render (-1 = off). See DeltaTrackerTimerMixin. */
+    public static volatile float forcedPartial = -1f;
+
+    /** Whether the client's world is currently frozen (/tick freeze). */
+    public static boolean worldFrozen() {
+        return Game.call(() -> Game.mc().level != null && Game.mc().level.tickRateManager().isFrozen());
+    }
+
+    public static void cmd(String c) {
         Game.run(() -> Game.mc().player.connection.sendCommand(c));
     }
 
@@ -46,9 +54,10 @@ public final class Rendering {
         Game.run(() -> Game.mc().options.hideGui = hideHud);
         String mode = world == null ? "sync" : world.toLowerCase(Locale.ROOT);
         double ticksPerFrame = 20.0 / fps;
-        double stepDebt = 0;
+        long stepped = 0;
         long started = System.nanoTime();
-        if (mode.equals("frozen") || mode.equals("step")) {
+        boolean wasFrozen = worldFrozen();
+        if ((mode.equals("frozen") || mode.equals("step")) && !wasFrozen) {
             cmd("tick freeze");
             Game.sleep(150);
         }
@@ -59,14 +68,17 @@ public final class Rendering {
             for (int i = 0; i < frames; i++) {
                 long t0 = System.nanoTime();
                 setup.accept(i);
-                if (mode.equals("step") && i > 0) {
-                    stepDebt += ticksPerFrame;
-                    int whole = (int) Math.floor(stepDebt);
-                    if (whole > 0) {
-                        stepDebt -= whole;
+                if (mode.equals("step")) {
+                    // world time for this frame, in ticks: whole ticks are stepped, the fraction is the partial tick
+                    double t = i * ticksPerFrame;
+                    long need = (long) Math.floor(t) + 1;
+                    if (need > stepped) {
+                        int whole = (int) (need - stepped);
+                        stepped = need;
                         cmd("tick step " + whole);
                         Game.sleep(55L * whole);
                     }
+                    forcedPartial = (float) (t - Math.floor(t));
                 }
                 if (mode.equals("sync")) {
                     // capture faster than real time: wait, so the world never gets ahead of the video (no slow motion)
@@ -93,14 +105,15 @@ public final class Rendering {
                 }
             }
         } finally {
+            forcedPartial = -1f;
             try {
                 video.close();
             } finally {
                 if (mode.equals("sync") && lastRate != 20) {
                     cmd("tick rate 20");
                 }
-                if (mode.equals("frozen") || mode.equals("step")) {
-                    cmd("tick unfreeze");
+                if ((mode.equals("frozen") || mode.equals("step")) && !wasFrozen) {
+                    cmd("tick unfreeze"); // leave the world as we found it
                 }
                 Game.run(() -> Game.mc().options.hideGui = hudBefore);
             }
@@ -122,7 +135,7 @@ public final class Rendering {
             Path g = video.resolveSibling(video.getFileName().toString().replace(".mp4", ".gif"));
             try {
                 Process p = new ProcessBuilder(Lensbridge.config().ffmpeg, "-y", "-loglevel", "error", "-i", video.toString(), "-vf",
-                        "fps=" + Math.min(fps, 20) + ",scale=640:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse", g.toString())
+                        "fps=" + (fps > 33 ? "100/3" : String.valueOf(fps)) + ",scale=640:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse", g.toString())
                         .redirectErrorStream(true).start();
                 p.getInputStream().readAllBytes();
                 p.waitFor(5, TimeUnit.MINUTES);

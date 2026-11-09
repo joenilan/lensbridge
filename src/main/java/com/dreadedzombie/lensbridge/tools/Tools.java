@@ -325,18 +325,59 @@ public final class Tools {
                 }));
 
         // ================================================================== capture (promo)
-        s.register(new Tool("capture_orbit", "Turntable shot: the director camera circles a point and every frame is saved, "
-                + "then encoded to MP4 (and optional GIF) with ffmpeg. Returns a contact sheet preview. Tip: scene freeze first.",
-                new Schema().req("cx", "number", "Centre X").req("cy", "number", "Centre Y").req("cz", "number", "Centre Z")
+        s.register(new Tool("capture_orbit", "Turntable shot: the director camera circles a point (or a target entity's centre) and "
+                + "every frame is saved, then encoded to MP4 (and optional GIF) with ffmpeg. Returns a contact sheet preview. "
+                + "Tip: scene freeze first; world=step + fps 60 for the smoothest turntables.",
+                new Schema().prop("cx", "number", "Centre X (or use target)").prop("cy", "number", "Centre Y").prop("cz", "number", "Centre Z")
+                        .prop("target", "object", "Centre on a target instead: {entity:id} / {nearest:type}; centre = middle of its "
+                                + "hitbox, plus optional offset [dx,dy,dz]")
+                        .prop("auto_center", "boolean", "With an entity target (default true): measure where the MODEL really is "
+                                + "(two probe views, with/without the entity) and centre on it; radius defaults to fit the model")
                         .prop("radius", "number", "Distance (default 4)").prop("height", "number", "Camera height above centre (default 1.5)")
                         .prop("frames", "integer", "Frame count (default 120)").prop("fps", "integer", "Playback fps (default 30)")
                         .prop("start_angle", "number", "Degrees (default 0)").prop("sweep", "number", "Degrees to travel (default 360)")
                         .prop("fov", "number", "Degrees").prop("name", "string", "Output name")
                         .prop("gif", "boolean", "Also make a GIF").prop("hide_hud", "boolean", "default true").prop("world", "string", Rendering.WORLD_DOC).build(),
                 a -> {
-                    Vec3 c = new Vec3(a.num("cx"), a.num("cy"), a.num("cz"));
+                    Vec3 c;
                     double r = a.num("radius", 4);
                     double h = a.num("height", 1.5);
+                    String autoNote = "";
+                    if (a.has("target")) {
+                        com.dreadedzombie.lensbridge.cinema.Target tg = com.dreadedzombie.lensbridge.cinema.Target.parse(a.obj("target"));
+                        c = Game.call(() -> tg.centre(1f));
+                        if (c == null) {
+                            throw new IllegalArgumentException("Target not found");
+                        }
+                        if (tg.entityId() >= 0 && a.bool("auto_center", true)) {
+                            boolean wasActive = DirectorCamera.active;
+                            com.dreadedzombie.lensbridge.cinema.AutoFrame.Result m;
+                            com.dreadedzombie.lensbridge.Stealth.begin();
+                            try {
+                                m = com.dreadedzombie.lensbridge.cinema.AutoFrame.measure(tg.entityId(), c, 6);
+                            } finally {
+                                com.dreadedzombie.lensbridge.Stealth.end();
+                                if (!wasActive) {
+                                    DirectorCamera.release();
+                                }
+                            }
+                            c = m.centre();
+                            autoNote = m.note();
+                            if (!a.has("radius")) {
+                                // model fills ~70% of the frame height (wings flap beyond the measured pose) at the orbit distance, seen from ~25 degrees up
+                                double fovUsed = a.num("fov", 50);
+                                double dist = Math.max(1.2, m.halfSize() / (0.7 * Math.tan(Math.toRadians(fovUsed / 2))));
+                                double elev = Math.toRadians(25);
+                                r = dist * Math.cos(elev);
+                                if (!a.has("height")) {
+                                    h = dist * Math.sin(elev);
+                                }
+                                autoNote += String.format(java.util.Locale.ROOT, "Radius %.2f, height %.2f. ", r, h);
+                            }
+                        }
+                    } else {
+                        c = new Vec3(a.num("cx"), a.num("cy"), a.num("cz"));
+                    }
                     int frames = a.i("frames", 120);
                     double start = Math.toRadians(a.num("start_angle", 0));
                     double sweep = Math.toRadians(a.num("sweep", 360));
@@ -348,8 +389,9 @@ public final class Tools {
                         float[] yp = DirectorCamera.lookAt(cam, c);
                         shots.add(new Shot(cam, yp[0], yp[1], 0, fov));
                     }
-                    return render(shots, a.str("name", "orbit_" + Capture.stamp()), a.i("fps", 30), a.bool("gif", false),
+                    Result res = render(shots, a.str("name", "orbit_" + Capture.stamp()), a.i("fps", 30), a.bool("gif", false),
                             a.bool("hide_hud", true), a.str("world", "sync"));
+                    return autoNote.isEmpty() ? res : res.prependText(autoNote);
                 }));
 
         s.register(new Tool("capture_path", "Cinematic camera move through keyframes, saved frame by frame and encoded to MP4. "

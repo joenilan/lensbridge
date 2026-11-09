@@ -219,18 +219,31 @@ public final class DroneTools {
                     try {
                     Map<String, com.dreadedzombie.lensbridge.VideoStream> out = new LinkedHashMap<>();
                     boolean hud = Game.call(() -> Game.mc().options.hideGui);
+                    boolean wasFrozen = Rendering.worldFrozen();
                     Game.run(() -> {
                         Game.mc().options.hideGui = true;
-                        Game.mc().player.connection.sendCommand("tick freeze");
+                        if (!wasFrozen) {
+                            Game.mc().player.connection.sendCommand("tick freeze");
+                        }
                     });
                     Game.sleep(300);
                     double ticksPerFrame = 20.0 / fps;
-                    double debt = 0;
+                    long stepped = 0;
                     try {
                         for (Tripods.Tripod t : list) {
                             out.put(t.name(), Capture.stream(prefix + "_" + t.name(), fps));
                         }
                         for (int i = 0; i < frames; i++) {
+                            // world time for this frame: whole ticks stepped, fraction rendered as the partial tick
+                            double tt = i * ticksPerFrame;
+                            long need = (long) Math.floor(tt) + 1;
+                            if (need > stepped) {
+                                int whole = (int) (need - stepped);
+                                stepped = need;
+                                Game.run(() -> Game.mc().player.connection.sendCommand("tick step " + whole));
+                                Game.sleep(55L * whole);
+                            }
+                            Rendering.forcedPartial = (float) (tt - Math.floor(tt));
                             for (Tripods.Tripod t : list) {
                                 Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
                                 DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
@@ -238,19 +251,15 @@ public final class DroneTools {
                                     out.get(t.name()).write(img);
                                 }
                             }
-                            debt += ticksPerFrame;          // world advances exactly 1/fps seconds per frame
-                            int whole = (int) Math.floor(debt);
-                            if (whole > 0) {
-                                debt -= whole;
-                                Game.run(() -> Game.mc().player.connection.sendCommand("tick step " + whole));
-                                Game.sleep(55L * whole);
-                            }
                         }
                     } finally {
+                        Rendering.forcedPartial = -1f;
                         out.values().forEach(com.dreadedzombie.lensbridge.VideoStream::close);
                         Game.run(() -> {
                             Game.mc().options.hideGui = hud;
-                            Game.mc().player.connection.sendCommand("tick unfreeze");
+                            if (!wasFrozen) {
+                                Game.mc().player.connection.sendCommand("tick unfreeze");
+                            }
                         });
                         DirectorCamera.release();
                     }

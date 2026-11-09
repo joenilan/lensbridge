@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 @Mod(value = Lensbridge.MODID, dist = Dist.CLIENT)
 public final class Lensbridge {
     public static final String MODID = "lensbridge";
-    public static final String VERSION = "0.3.1";
+    public static final String VERSION = "0.3.2";
     public static final Logger LOGGER = LogUtils.getLogger();
     private static BridgeConfig config;
     private static BridgeServer server;

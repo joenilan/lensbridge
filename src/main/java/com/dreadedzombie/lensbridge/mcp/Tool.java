@@ -76,6 +76,20 @@ public record Tool(String name, String description, JsonObject schema, Function<
             return this;
         }
 
+        /** Put a line of text before everything else (e.g. a note from a pre-pass). */
+        public Result prependText(String text) {
+            JsonObject o = new JsonObject();
+            o.addProperty("type", "text");
+            o.addProperty("text", text);
+            JsonArray rest = this.content.deepCopy();
+            while (!this.content.isEmpty()) {
+                this.content.remove(0);
+            }
+            this.content.add(o);
+            this.content.addAll(rest);
+            return this;
+        }
+
         public Result addImage(Path png, int maxEdge) {
             JsonObject o = new JsonObject();
             o.addProperty("type", "image");

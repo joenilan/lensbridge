@@ -83,6 +83,24 @@ public final class Target {
         return base.add(this.offset != null ? this.offset : new Vec3(0, e.getBbHeight() * 0.6, 0));
     }
 
+    /** Entity id, or -1 for a point target. */
+    public int entityId() {
+        return this.point != null ? -1 : this.entityId;
+    }
+
+    /** Centre of the target: an entity's hitbox middle (plus offset), or the point. Null if gone. Client thread. */
+    public @Nullable Vec3 centre(float partialTick) {
+        if (this.point != null) {
+            return this.offset == null ? this.point : this.point.add(this.offset);
+        }
+        Entity e = Game.mc().level == null ? null : Game.mc().level.getEntity(this.entityId);
+        if (e == null) {
+            return null;
+        }
+        Vec3 base = e.getPosition(partialTick).add(0, e.getBbHeight() * 0.5, 0);
+        return this.offset == null ? base : base.add(this.offset);
+    }
+
     /** Facing yaw of the target (entities), for follow cams. */
     public float facing(float partialTick) {
         if (this.point != null) {
