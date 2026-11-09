@@ -38,6 +38,7 @@ public final class UserControls {
     static final KeyMapping CYCLE = alt("key.lensbridge.cycle", GLFW.GLFW_KEY_N);
     static final KeyMapping RECORD = alt("key.lensbridge.record", GLFW.GLFW_KEY_R);
     static final KeyMapping MANAGER = alt("key.lensbridge.manager", GLFW.GLFW_KEY_C);
+    static final KeyMapping PROPS = alt("key.lensbridge.props", GLFW.GLFW_KEY_P);
 
     private static boolean piloting;
     private static float lockYaw;
@@ -54,6 +55,19 @@ public final class UserControls {
         event.register(CYCLE);
         event.register(RECORD);
         event.register(MANAGER);
+        event.register(PROPS);
+    }
+
+    /** Alt+P / Camera Manager switch: show or hide the camera props in the player's own view. */
+    public static boolean toggleShowCameras() {
+        boolean show = !(com.dreadedzombie.lensbridge.cinema.Props.enabled && com.dreadedzombie.lensbridge.cinema.Props.playerView);
+        com.dreadedzombie.lensbridge.cinema.Props.playerView = show;
+        if (show) {
+            com.dreadedzombie.lensbridge.cinema.Props.enabled = true;
+        } else if (com.dreadedzombie.lensbridge.cinema.Props.crew.isEmpty()) {
+            com.dreadedzombie.lensbridge.cinema.Props.enabled = false;   // nobody needs them any more
+        }
+        return show;
     }
 
     public static boolean piloting() {
@@ -222,6 +236,9 @@ public final class UserControls {
                 DirectorCamera.preview = true;
                 say("Tripod " + (tripodIndex + 1) + "/" + list.size() + ": " + t.name());
             }
+        }
+        while (PROPS.consumeClick()) {
+            say(toggleShowCameras() ? "Showing your cameras in the world (Alt+P to hide)" : "Cameras hidden");
         }
         while (MANAGER.consumeClick()) {
             BridgeConfig c = Lensbridge.config();

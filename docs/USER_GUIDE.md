@@ -31,6 +31,7 @@ Lensbridge only runs on **your** computer (the client). Servers don't need it.
 | **Alt+D** | Fly the drone camera |
 | **Alt+R** | Start / stop recording a video |
 | **Alt+C** | Open the **Camera Manager** in your web browser |
+| **Alt+P** | Show or hide your cameras as props in the world |
 | **Esc** | Get out of any camera mode and back to your own view |
 
 You can change every key under **Options → Controls → Key Binds → Lensbridge Camera**. They all use **Alt** so they don't clash with map and minimap mods.
@@ -103,7 +104,7 @@ While flying, you can press **Alt+R** to record, or **Alt+T** to drop a camera a
 
 ## 6. Seeing your cameras in the world
 
-Lensbridge can show your cameras as little props: each tripod as a camera on legs, the drone with spinning rotors. They exist only on your computer; servers and other players never see them. Your own shots stay clean: a camera never films the props unless you (or your assistant) make it a "crew" camera for behind-the-scenes footage. Ask your assistant to "show the camera props", or use the `props` tool.
+Lensbridge can show your cameras as little props: each tripod as a camera on legs, the drone with spinning rotors. They exist only on your computer; servers and other players never see them. Your own shots stay clean: a camera never films the props unless you (or your assistant) make it a "crew" camera for behind-the-scenes footage. Press **Alt+P** (or **Show cameras in world** in the Camera Manager) to see them yourself.
 
 ## 7. Getting out of anything
 

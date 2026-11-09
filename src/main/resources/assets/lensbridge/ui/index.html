@@ -50,6 +50,7 @@
   <button onclick="thumbsVisible()">Refresh thumbnails</button>
   <button class="primary" onclick="shootEnabled()">Shoot enabled</button>
   <button onclick="api('exit_camera',{}).then(log)">Back to my view</button>
+  <button id="showcams" onclick="toggleCams()" title="Show your cameras as props in your own view (Alt+P). Your shots stay clean.">Show cameras in world</button>
 </header>
 <div id="editbar"><span>✋ Controlling <b id="edname"></b> in game: WASD / Space / Shift to move, Sprint for speed, mouse to look, scroll to zoom.
   Press <b>Enter</b> in game to save, <b>Esc</b> or <b>Backspace</b> to cancel, or use these buttons:</span>
@@ -62,9 +63,19 @@ const TOKEN = location.hash.slice(1);
 let TRIPODS = [], GROUP = 'all', EDITING = null;
 const $ = s => document.querySelector(s);
 function log(msg) { const l = $('#log'); l.textContent = msg; l.style.display = 'block'; clearTimeout(log.t); log.t = setTimeout(() => l.style.display = 'none', 4000); }
+async function toggleCams() {
+  const on = !document.getElementById('showcams').classList.contains('primary');
+  const r = await api('props', on ? { enabled: true, player_view: true } : { player_view: false });
+  syncCams(r);
+}
+function syncCams(t) {
+  document.getElementById('showcams').classList.toggle('primary', /props ON \| player view on/.test(t));
+}
+setTimeout(() => api('props', {}).then(syncCams).catch(() => {}), 300);
+
 async function api(tool, args) {
   const r = await fetch('/api/' + tool, { method:'POST', headers:{ 'Authorization':'Bearer ' + TOKEN }, body: JSON.stringify(args || {}) });
-  if (r.status === 401) { $('#status').textContent = 'unauthorized - open this page from the game (key M) or add #token to the URL'; throw new Error('401'); }
+  if (r.status === 401) { $('#status').textContent = 'unauthorized - open this page from the game (Alt+C) or add #token to the URL'; throw new Error('401'); }
   const j = await r.json();
   const text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
   if (j.isError) { log(text); throw new Error(text); }
@@ -158,6 +169,7 @@ async function finishEdit(save) { log(await api('tripod_edit_finish', { save }))
 // light polling: notice edits finished in game (Enter/Backspace) and refresh that card
 let lastEditing = null;
 setInterval(async () => {
+  api('props', {}).then(syncCams).catch(() => {});
   try {
     const d = JSON.parse(await api('tripod_all'));
     const ed = d.editing || null;
