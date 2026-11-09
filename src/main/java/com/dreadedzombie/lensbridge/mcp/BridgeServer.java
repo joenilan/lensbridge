@@ -283,8 +283,17 @@ public final class BridgeServer {
     }
 
     private static final String INSTRUCTIONS = """
-            Lensbridge drives a live Minecraft client. Start with `status`. Use `screenshot` to SEE the game \
-            (it captures only the game's own picture). Movement/keys act on the real player; `command` needs op. \
-            For promo work: stage with `scene`, frame with `camera_set`/`camera_look_at` (director camera, HUD hidden), \
-            then `screenshot`, `capture_orbit` or `capture_path` (video via ffmpeg). Always `camera_release` when done.""";
+            Lensbridge drives a LIVE Minecraft client that a person may be playing. Full guide: docs/AGENT_GUIDE.md in the \
+            Lensbridge repo; tool reference: docs/TOOLS.md.
+            Rules: (1) Start with `status`. (2) NEVER use the player's own view as your camera - frame with camera_look_at, \
+            tripods (tripod_place/tripod_ring) or drone_fly; with stealth capture the player's screen doesn't change. You may \
+            teleport the player near a location only so its chunks load (ask if they are playing). (3) Never build scenes block \
+            by block - use one datapack function / fill. (4) scene {"freeze":true} before staging and shooting; scene \
+            {"look":"qa"} for honest lighting (shaders off). (5) Flat things (wings, items lying down) need ~45-60 degree \
+            top-down angles; distance grows with subject size - check tripod_thumbs before tripod_shots. (6) Video speed is \
+            true by default: record = real time, capture_* render frame-exact with world=sync; timelapse only via \
+            timelapse_interval or world=free. (7) Open and look at the saved images before claiming anything; report \
+            honestly and give the person the file paths. (8) Finish with exit_camera / camera_release so the player is back \
+            on their own view.""";
+
 }

@@ -1,19 +1,25 @@
 # Lensbridge
 
-**Let AI assistants and scripts see and drive your Minecraft client**, for mod testing, automated checks, and promo stills, orbits, camera moves and video.
+**A film studio and AI bridge for Minecraft.** Place cameras, fly a drone, manage shots in your browser, and record true-speed video. You can also let an AI assistant (via MCP) see the game and shoot screenshots, orbits, camera moves, drone footage and multi-angle videos for you: for mod testing, debugging visuals, and promo material.
 
-Lensbridge is a small **client-side NeoForge mod** (Minecraft 1.21.11). It runs a local **MCP server** (Model Context Protocol, the tool protocol Claude and other assistants use) plus a simple REST API on `127.0.0.1`. Through it an assistant can:
+| I am... | Read |
+|---|---|
+| A **player / modmaker** who wants to use it | **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**: install, hotkeys, Camera Manager, drone, recording, troubleshooting |
+| An **AI agent** driving a game | **[docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)**: rules, workflows, framing, video, pitfalls; then **[docs/TOOLS.md](docs/TOOLS.md)** |
+| Working **on the code** | **[AGENTS.md](AGENTS.md)**, [ROADMAP.md](ROADMAP.md) |
 
-- **See** the game. Screenshots come from the game's own framebuffer, never the desktop, other windows or other monitors.
-- **Act:** move, look, use and attack, pick hotbar slots, chat, run commands.
-- **Inspect:** what's under the crosshair, nearby entities, inventory, chat and command feedback.
-- **Direct:** a free director camera with position, angles, roll and FOV, HUD on or off, window size.
-- **Stage:** time, weather, and freezing or stepping the world so every mob holds still.
-- **Capture:** clean stills, turntable **orbits**, smooth **camera paths** through keyframes, and real-time **recordings**, encoded to MP4 or GIF with ffmpeg, with a contact-sheet preview returned inline.
+**Quick keys:**
 
-It was built to let an AI assistant test the [Mothlight](https://github.com/joenilan/mothlight) mod by itself and make its promo material, but it works with any modpack.
+| Key | Action |
+|---|---|
+| Alt+C | Camera Manager |
+| Alt+T | Place camera |
+| Alt+N | Cycle cameras |
+| Alt+D | Drone |
+| Alt+R | Record |
+| Esc | Back to your own view |
 
----
+The rest of this file is the technical overview.
 
 ## Install
 
