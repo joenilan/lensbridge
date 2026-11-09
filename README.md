@@ -101,6 +101,18 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 
 Targets everywhere: `{"entity": id}`, `{"nearest": "mothlight:lumen"}`, `{"point": [x,y,z]}` or `{"player": true}`, with an optional `"offset": [dx,dy,dz]`.
 
+### Camera Manager (browser panel)
+
+Press **M** in game (or open `http://127.0.0.1:25599/ui#<token>`). Every camera appears as a card with a thumbnail, grouped by name prefix. On each card you can:
+- turn it on or off (shoots and multicam use enabled cameras)
+- edit x/y/z/yaw/pitch/FOV
+- nudge it (fwd/back/left/right/up/down, yaw, tilt, zoom); the thumbnail re-renders automatically
+- show it on your screen
+- **save your current view** into it (fly the drone with K, find the angle, click)
+- delete it
+
+There are also group enable/disable controls and **Shoot enabled**. Thumbnails render in stealth, so your screen never changes. The same functions are available to AI as `tripod_all`, `tripod_update`, `tripod_nudge`, `tripod_thumbs`, `tripod_preview` and `tripod_set_from_view`.
+
 ### In-game camera controls (for players)
 
 | Key (rebindable, "Lensbridge Camera") | Action |
@@ -109,6 +121,7 @@ Targets everywhere: `{"entity": id}`, `{"nearest": "mothlight:lumen"}`, `{"point
 | **Y** | Place a tripod at the current view |
 | **U** | Cycle through tripod views, then back to you |
 | **J** | Start/stop recording (30 fps, HUD hidden) → MP4 in `lensbridge/videos/` |
+| **M** | Open the Camera Manager in your browser |
 
 A small HUD shows drone telemetry, the active camera and recording time; it's hidden whenever the HUD is hidden.
 

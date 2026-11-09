@@ -282,7 +282,7 @@ public final class DroneTools {
                 list.add(t);
             }
         } else {
-            list.addAll(Tripods.all().values());
+            Tripods.all().values().stream().filter(Tripods.Tripod::enabled).forEach(list::add);
         }
         if (list.isEmpty()) {
             throw new IllegalStateException("No tripods - place some with tripod_place / tripod_ring (or press Y in game)");

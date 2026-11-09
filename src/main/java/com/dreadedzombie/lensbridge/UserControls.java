@@ -31,6 +31,7 @@ public final class UserControls {
     static final KeyMapping TRIPOD = new KeyMapping("key.lensbridge.tripod", GLFW.GLFW_KEY_Y, CATEGORY);
     static final KeyMapping CYCLE = new KeyMapping("key.lensbridge.cycle", GLFW.GLFW_KEY_U, CATEGORY);
     static final KeyMapping RECORD = new KeyMapping("key.lensbridge.record", GLFW.GLFW_KEY_J, CATEGORY);
+    static final KeyMapping MANAGER = new KeyMapping("key.lensbridge.manager", GLFW.GLFW_KEY_M, CATEGORY);
 
     private static boolean piloting;
     private static float lockYaw;
@@ -46,6 +47,7 @@ public final class UserControls {
         event.register(TRIPOD);
         event.register(CYCLE);
         event.register(RECORD);
+        event.register(MANAGER);
     }
 
     public static boolean piloting() {
@@ -122,6 +124,11 @@ public final class UserControls {
                 DirectorCamera.preview = true;
                 say("Tripod " + (tripodIndex + 1) + "/" + list.size() + ": " + t.name());
             }
+        }
+        while (MANAGER.consumeClick()) {
+            BridgeConfig c = Lensbridge.config();
+            net.minecraft.util.Util.getPlatform().openUri("http://" + c.host + ":" + c.port + "/ui#" + c.token);
+            say("Opened the camera manager in your browser");
         }
         while (RECORD.consumeClick()) {
             if (Recorder.running()) {

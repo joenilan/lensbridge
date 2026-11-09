@@ -3,5 +3,6 @@
   "key.lensbridge.drone": "Fly drone camera",
   "key.lensbridge.tripod": "Place tripod at view",
   "key.lensbridge.cycle": "Cycle tripod views",
-  "key.lensbridge.record": "Start/stop recording"
+  "key.lensbridge.record": "Start/stop recording",
+  "key.lensbridge.manager": "Open camera manager (browser)"
 }

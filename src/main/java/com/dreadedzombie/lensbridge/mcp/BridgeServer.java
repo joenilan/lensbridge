@@ -53,6 +53,8 @@ public final class BridgeServer {
         this.http.createContext("/health", ex -> send(ex, 200, "{\"ok\":true,\"name\":\"lensbridge\"}"));
         this.http.createContext("/mcp", this::handleMcp);
         this.http.createContext("/api/", this::handleRest);
+        this.http.createContext("/ui", this::handleUi);
+        this.http.createContext("/file", this::handleFile);
         this.http.start();
         Lensbridge.LOGGER.info("Lensbridge listening on http://{}:{}/mcp ({} tools)", this.config.host, this.config.port, this.tools.size());
     }
@@ -63,8 +65,58 @@ public final class BridgeServer {
         }
     }
 
+    private void handleUi(HttpExchange ex) throws IOException {
+        try (var in = BridgeServer.class.getResourceAsStream("/assets/lensbridge/ui/index.html")) {
+            byte[] page = in == null ? "missing ui".getBytes(StandardCharsets.UTF_8) : in.readAllBytes();
+            ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+            ex.sendResponseHeaders(200, page.length);
+            try (OutputStream out = ex.getResponseBody()) {
+                out.write(page);
+            }
+        }
+        ex.close();
+    }
+
+    /** Serve a file from the capture folder (thumbnails, screenshots, videos). Token via header or ?token=. */
+    private void handleFile(HttpExchange ex) throws IOException {
+        if (!authorized(ex)) {
+            send(ex, 401, "{\"error\":\"unauthorized\"}");
+            return;
+        }
+        String q = ex.getRequestURI().getRawQuery() == null ? "" : ex.getRequestURI().getRawQuery();
+        String rel = "";
+        for (String part : q.split("&")) {
+            if (part.startsWith("path=")) {
+                rel = java.net.URLDecoder.decode(part.substring(5), StandardCharsets.UTF_8);
+            }
+        }
+        java.nio.file.Path root = com.dreadedzombie.lensbridge.Capture.dir("").toAbsolutePath().normalize();
+        java.nio.file.Path file = root.resolve(rel).normalize();
+        if (!file.startsWith(root) || !java.nio.file.Files.isRegularFile(file)) {
+            send(ex, 404, "{\"error\":\"not found\"}");
+            return;
+        }
+        String name = file.getFileName().toString();
+        ex.getResponseHeaders().set("Content-Type", name.endsWith(".png") ? "image/png" : name.endsWith(".mp4") ? "video/mp4"
+                : name.endsWith(".gif") ? "image/gif" : "application/octet-stream");
+        ex.getResponseHeaders().set("Cache-Control", "no-store");
+        ex.sendResponseHeaders(200, java.nio.file.Files.size(file));
+        try (OutputStream out = ex.getResponseBody()) {
+            java.nio.file.Files.copy(file, out);
+        }
+        ex.close();
+    }
+
     private boolean authorized(HttpExchange ex) {
         String header = ex.getRequestHeaders().getFirst("Authorization");
+        String q = ex.getRequestURI().getRawQuery();
+        if (header == null && q != null) {
+            for (String part : q.split("&")) {
+                if (part.startsWith("token=")) {
+                    header = "Bearer " + part.substring(6);
+                }
+            }
+        }
         String expected = "Bearer " + this.config.token;
         return header != null && MessageDigest.isEqual(header.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
     }

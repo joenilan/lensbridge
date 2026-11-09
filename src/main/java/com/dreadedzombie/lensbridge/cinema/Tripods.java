@@ -17,7 +17,33 @@ import org.jspecify.annotations.Nullable;
 /** Named fixed cameras ("tripods") for multi-angle stills and synced multicam capture. Saved to config/lensbridge/tripods.json. */
 public final class Tripods {
     /** A tripod: fixed position; either fixed angles or a tracking target (stored as its JSON spec). */
-    public record Tripod(String name, Vec3 pos, float yaw, float pitch, float fov, @Nullable JsonObject track) {
+    public record Tripod(String name, Vec3 pos, float yaw, float pitch, float fov, @Nullable JsonObject track, boolean enabled) {
+        public Tripod(String name, Vec3 pos, float yaw, float pitch, float fov, @Nullable JsonObject track) {
+            this(name, pos, yaw, pitch, fov, track, true);
+        }
+
+        /** Group = first segment of the name ("wm_03_luna" -> "wm"), used to organise the camera manager. */
+        public String group() {
+            int i = name.indexOf('_');
+            return i > 0 ? name.substring(0, i) : "misc";
+        }
+
+        public JsonObject toJson() {
+            JsonObject o = new JsonObject();
+            o.addProperty("name", name);
+            o.addProperty("group", group());
+            o.addProperty("x", pos.x);
+            o.addProperty("y", pos.y);
+            o.addProperty("z", pos.z);
+            o.addProperty("yaw", yaw);
+            o.addProperty("pitch", pitch);
+            o.addProperty("fov", fov);
+            o.addProperty("enabled", enabled);
+            if (track != null) {
+                o.add("track", track);
+            }
+            return o;
+        }
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -41,7 +67,8 @@ public final class Tripods {
                         TRIPODS.put(o.get("name").getAsString(), new Tripod(o.get("name").getAsString(),
                                 new Vec3(o.get("x").getAsDouble(), o.get("y").getAsDouble(), o.get("z").getAsDouble()),
                                 o.get("yaw").getAsFloat(), o.get("pitch").getAsFloat(), o.get("fov").getAsFloat(),
-                                o.has("track") ? o.getAsJsonObject("track") : null));
+                                o.has("track") ? o.getAsJsonObject("track") : null,
+                                !o.has("enabled") || o.get("enabled").getAsBoolean()));
                     }
                 }
             } catch (IOException | RuntimeException e) {
@@ -78,18 +105,7 @@ public final class Tripods {
     private static void save() {
         JsonArray arr = new JsonArray();
         for (Tripod t : TRIPODS.values()) {
-            JsonObject o = new JsonObject();
-            o.addProperty("name", t.name());
-            o.addProperty("x", t.pos().x);
-            o.addProperty("y", t.pos().y);
-            o.addProperty("z", t.pos().z);
-            o.addProperty("yaw", t.yaw());
-            o.addProperty("pitch", t.pitch());
-            o.addProperty("fov", t.fov());
-            if (t.track() != null) {
-                o.add("track", t.track());
-            }
-            arr.add(o);
+            arr.add(t.toJson());
         }
         try {
             Files.createDirectories(file().getParent());

@@ -28,6 +28,8 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] Stealth capture: director-camera frames render but aren't presented, so the player's screen holds its last frame (no flashing); AI cameras are hidden unless `camera_preview` is on; player hotkeys preview live
 - [x] `scene look` presets (qa, noon, golden, sunset, blue_hour, night, dawn, overcast) + Iris shaders on/off (reflection, optional)
 - [x] Capture warm-up after idle (fixes stale first frames)
+- [x] Stealth batches: `glFinish` on skipped presents (fixes repeated/stale frames in long stealth batches)
+- [x] **Camera Manager**: browser panel (M / `/ui`) with thumbnails, groups, enable/disable, field edits, nudges with auto re-render, on-screen preview, save-current-view, delete, shoot enabled; plus the matching AI tools; `/file` serves captures (token, no path escape)
 
 ## 0.3: drone + tripods (done 2026-11-09)
 

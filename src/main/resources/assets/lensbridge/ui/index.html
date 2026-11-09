@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lensbridge Cameras</title>
+<style>
+  :root { --bg:#14161b; --panel:#1d2027; --line:#2c313b; --text:#e6e8ee; --dim:#9aa1ae; --accent:#ffd27a; --ok:#7ee0b0; --off:#5a606c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:rgba(20,22,27,.96); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  h1 { font-size:16px; margin:0 12px 0 0; color:var(--accent); }
+  #status { color:var(--dim); margin-right:auto; }
+  button { background:#2a2f39; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#1a1a1a; border-color:var(--accent); font-weight:600; }
+  #groups { display:flex; flex-wrap:wrap; gap:6px; padding:10px 16px; border-bottom:1px solid var(--line); }
+  .chip { border-radius:999px; padding:4px 10px; }
+  .chip.sel { background:var(--accent); color:#1a1a1a; }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:12px; padding:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .card.disabled { opacity:.5; }
+  .thumb { aspect-ratio:16/9; background:#0c0d10; display:flex; align-items:center; justify-content:center; color:var(--dim); position:relative; }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .busy::after { content:"capturing..."; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); color:var(--accent); }
+  .body { padding:10px; display:grid; gap:8px; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .name { font-weight:600; flex:1; word-break:break-all; }
+  .fields { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; }
+  .fields label { font-size:11px; color:var(--dim); display:grid; gap:2px; }
+  .fields input { width:100%; background:#111318; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 4px; font:12px monospace; }
+  .pad { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; }
+  .pad button { padding:4px 0; font-size:12px; }
+  .toggle { display:flex; gap:4px; align-items:center; color:var(--dim); font-size:12px; }
+  .track { font-size:11px; color:var(--ok); }
+  #log { position:fixed; bottom:10px; right:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 12px; color:var(--dim); max-width:60vw; font-size:12px; display:none; }
+  @media (max-width:640px) { #grid { grid-template-columns:1fr; padding:10px; } .fields { grid-template-columns:repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lensbridge · Cameras</h1>
+  <span id="status">connecting...</span>
+  <button onclick="load()">Reload</button>
+  <button onclick="thumbsVisible()">Refresh thumbnails</button>
+  <button class="primary" onclick="shootEnabled()">Shoot enabled</button>
+  <button onclick="api('tripod_preview',{})">Preview off</button>
+</header>
+<div id="groups"></div>
+<div id="grid"></div>
+<div id="log"></div>
+<script>
+const TOKEN = location.hash.slice(1);
+let TRIPODS = [], GROUP = 'all';
+const $ = s => document.querySelector(s);
+function log(msg) { const l = $('#log'); l.textContent = msg; l.style.display = 'block'; clearTimeout(log.t); log.t = setTimeout(() => l.style.display = 'none', 4000); }
+async function api(tool, args) {
+  const r = await fetch('/api/' + tool, { method:'POST', headers:{ 'Authorization':'Bearer ' + TOKEN }, body: JSON.stringify(args || {}) });
+  if (r.status === 401) { $('#status').textContent = 'unauthorized - open this page from the game (key M) or add #token to the URL'; throw new Error('401'); }
+  const j = await r.json();
+  const text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
+  if (j.isError) { log(text); throw new Error(text); }
+  return text;
+}
+function thumbUrl(t) { return '/file?path=' + encodeURIComponent('thumbs/' + t.name.replace(/[^A-Za-z0-9_\-]/g, '_') + '.png') + '&token=' + TOKEN + '&t=' + t.thumb_time; }
+async function load() {
+  const data = JSON.parse(await api('tripod_all'));
+  TRIPODS = data.tripods;
+  $('#status').textContent = TRIPODS.length + ' cameras · camera: ' + data.camera + (data.preview ? ' (on screen)' : '');
+  renderGroups(); renderGrid();
+}
+function renderGroups() {
+  const counts = {};
+  TRIPODS.forEach(t => counts[t.group] = (counts[t.group] || 0) + 1);
+  const g = $('#groups'); g.innerHTML = '';
+  const chip = (name, label) => { const b = document.createElement('button'); b.className = 'chip' + (GROUP === name ? ' sel' : ''); b.textContent = label;
+    b.onclick = () => { GROUP = name; renderGroups(); renderGrid(); }; g.appendChild(b); };
+  chip('all', 'All ' + TRIPODS.length);
+  Object.keys(counts).sort().forEach(k => chip(k, k + ' ' + counts[k]));
+  if (GROUP !== 'all') {
+    const on = document.createElement('button'); on.textContent = 'Enable group'; on.onclick = () => setGroup(true); g.appendChild(on);
+    const off = document.createElement('button'); off.textContent = 'Disable group'; off.onclick = () => setGroup(false); g.appendChild(off);
+  }
+}
+const visible = () => TRIPODS.filter(t => GROUP === 'all' || t.group === GROUP);
+function renderGrid() {
+  const grid = $('#grid'); grid.innerHTML = '';
+  visible().forEach(t => grid.appendChild(card(t)));
+}
+function card(t) {
+  const c = document.createElement('div'); c.className = 'card' + (t.enabled ? '' : ' disabled'); c.id = 'card-' + t.name;
+  const f = (k, step) => `<label>${k}<input type="number" step="${step}" value="${(+t[k]).toFixed(step < 1 ? 2 : 0)}" data-k="${k}"></label>`;
+  c.innerHTML = `
+    <div class="thumb">${t.has_thumb ? `<img src="${thumbUrl(t)}" alt="">` : 'no thumbnail yet'}</div>
+    <div class="body">
+      <div class="row"><span class="name">${t.name}</span>
+        <label class="toggle"><input type="checkbox" ${t.enabled ? 'checked' : ''} data-en> on</label></div>
+      ${t.track ? `<div class="track">tracking ${JSON.stringify(t.track)}</div>` : ''}
+      <div class="fields">${f('x', .25)}${f('y', .25)}${f('z', .25)}${f('yaw', 1)}${f('pitch', 1)}${f('fov', 1)}</div>
+      <div class="pad">
+        <button data-n='{"forward":0.5}'>fwd</button><button data-n='{"forward":-0.5}'>back</button>
+        <button data-n='{"right":-0.5}'>left</button><button data-n='{"right":0.5}'>right</button>
+        <button data-n='{"up":0.5}'>up</button><button data-n='{"up":-0.5}'>down</button>
+        <button data-n='{"yaw":-5}'>yaw−</button><button data-n='{"yaw":5}'>yaw+</button>
+        <button data-n='{"pitch":-5}'>tilt up</button><button data-n='{"pitch":5}'>tilt dn</button>
+        <button data-n='{"fov":-5}'>zoom in</button><button data-n='{"fov":5}'>zoom out</button>
+      </div>
+      <div class="row">
+        <button data-a="thumb">📷 Refresh</button><button data-a="preview">👁 On screen</button>
+        <button data-a="fromview">Save my view here</button><button data-a="delete">✕</button>
+      </div>
+    </div>`;
+  c.querySelector('[data-en]').onchange = e => update(t, { enabled: e.target.checked });
+  c.querySelectorAll('.fields input').forEach(i => i.onchange = () => update(t, { [i.dataset.k]: parseFloat(i.value) }, true));
+  c.querySelectorAll('[data-n]').forEach(b => b.onclick = async () => {
+    const j = JSON.parse(await api('tripod_nudge', Object.assign({ name:t.name }, JSON.parse(b.dataset.n))));
+    Object.assign(t, j); await thumbs([t.name]);
+  });
+  c.querySelector('[data-a=thumb]').onclick = () => thumbs([t.name]);
+  c.querySelector('[data-a=preview]').onclick = async () => { await api('tripod_preview', { name:t.name }); log('Showing ' + t.name + ' on screen - "Preview off" to return'); };
+  c.querySelector('[data-a=fromview]').onclick = async () => { await api('tripod_set_from_view', { name:t.name }); await thumbs([t.name]); };
+  c.querySelector('[data-a=delete]').onclick = async () => { if (confirm('Delete ' + t.name + '?')) { await api('tripod_remove', { name:t.name }); load(); } };
+  return c;
+}
+async function update(t, fields, refresh) {
+  const j = JSON.parse(await api('tripod_update', Object.assign({ name:t.name }, fields)));
+  Object.assign(t, j);
+  const el = $('#card-' + CSS.escape(t.name)); if (el) el.className = 'card' + (t.enabled ? '' : ' disabled');
+  if (refresh) await thumbs([t.name]);
+}
+async function thumbs(names) {
+  names.forEach(n => { const el = $('#card-' + CSS.escape(n) + ' .thumb'); if (el) el.classList.add('busy'); });
+  try { await api('tripod_thumbs', { names }); } finally { await load(); }
+}
+function thumbsVisible() { return thumbs(visible().map(t => t.name)); }
+async function setGroup(on) { for (const t of visible()) { await api('tripod_update', { name:t.name, enabled:on }); } load(); }
+async function shootEnabled() {
+  const names = visible().filter(t => t.enabled).map(t => t.name);
+  if (!names.length) return log('No enabled cameras in view');
+  log('Shooting ' + names.length + ' cameras...');
+  const text = await api('tripod_shots', { names });
+  log(text.split('\n').pop());
+}
+load().catch(e => console.error(e));
+</script>
+</body>
+</html>

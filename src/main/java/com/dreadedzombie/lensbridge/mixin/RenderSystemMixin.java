@@ -14,6 +14,10 @@ public abstract class RenderSystemMixin {
     private static void lensbridge$maybeSwap(long window) {
         if (!Stealth.active()) {
             GLFW.glfwSwapBuffers(window);
+        } else {
+            // No present this frame, so nothing implicitly flushes the driver; make sure the frame's GPU work
+            // (including screenshot copies) really completes, or later readbacks can see stale data.
+            org.lwjgl.opengl.GL11.glFinish();
         }
     }
 }

@@ -57,6 +57,7 @@ public final class Lensbridge {
         Tools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.CinemaTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.DroneTools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.ManagerTools.registerAll(server);
         try {
             server.start();
         } catch (Exception e) {
