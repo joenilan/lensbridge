@@ -214,6 +214,17 @@ public final class CinemaTools {
                     int frames = Math.max(2, (int) Math.round(secs * fps));
                     String world = a.has("tick_step") && a.i("tick_step", 0) > 0 ? "step" : a.str("world", "sync");
                     try {
+                        // pre-roll: park the move at t=0 and let a few frames render, so programs that restart on a
+                        // time jump (drone physics) have reset before frame 0 is captured
+                        DirectorCamera.manualTime = 0.0;
+                        com.dreadedzombie.lensbridge.Stealth.begin();
+                        try {
+                            for (int k = 0; k < 3; k++) {
+                                Capture.grabImage(4).close();
+                            }
+                        } finally {
+                            com.dreadedzombie.lensbridge.Stealth.end();
+                        }
                         return Rendering.render(a.str("name", "move_" + Capture.stamp()), fps, frames,
                                 i -> DirectorCamera.manualTime = (double) i / fps, world, a.bool("hide_hud", true), a.bool("gif", false));
                     } finally {

@@ -88,7 +88,7 @@ public final class Rendering {
                         Game.sleep((due - now) / 1_000_000L);
                     }
                 }
-                try (NativeImage img = Capture.grabImage(i == 0 ? 6 : 1)) {
+                try (NativeImage img = Capture.grabImage(i == 0 ? 6 : 2)) {
                     video.write(img);
                 }
                 double dt = (System.nanoTime() - t0) / 1e9;
