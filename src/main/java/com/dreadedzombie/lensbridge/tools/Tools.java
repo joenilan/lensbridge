@@ -365,7 +365,7 @@ public final class Tools {
                             if (due > now) {
                                 Game.sleep((due - now) / 1_000_000L);
                             }
-                            files.add(Capture.grab(dir.resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), 1));
+                            files.add(Capture.grab(dir.resolve(String.format(Locale.ROOT, "frame_%05d.png", i)), i == 0 ? 4 : 1));
                         }
                     } finally {
                         Game.run(() -> mc().options.hideGui = before);

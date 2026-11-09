@@ -1,0 +1,7 @@
+{
+  "key.category.lensbridge.camera": "Lensbridge Camera",
+  "key.lensbridge.drone": "Fly drone camera",
+  "key.lensbridge.tripod": "Place tripod at view",
+  "key.lensbridge.cycle": "Cycle tripod views",
+  "key.lensbridge.record": "Start/stop recording"
+}

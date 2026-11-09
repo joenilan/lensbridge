@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 @Mod(value = Lensbridge.MODID, dist = Dist.CLIENT)
 public final class Lensbridge {
     public static final String MODID = "lensbridge";
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.3.0";
     public static final Logger LOGGER = LogUtils.getLogger();
     private static BridgeConfig config;
     private static BridgeServer server;
@@ -31,6 +31,10 @@ public final class Lensbridge {
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onAngles);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onFov);
         NeoForge.EVENT_BUS.addListener(com.dreadedzombie.lensbridge.tools.CinemaTools::onTick);
+        modBus.addListener(UserControls::registerKeys);
+        NeoForge.EVENT_BUS.addListener(UserControls::onTick);
+        NeoForge.EVENT_BUS.addListener(UserControls::onMovementInput);
+        NeoForge.EVENT_BUS.addListener(UserControls::onHud);
         if (!config.enabled) {
             LOGGER.info("Lensbridge is disabled in config/lensbridge.json");
             return;
@@ -42,11 +46,16 @@ public final class Lensbridge {
                         if (mc.options.pauseOnLostFocus) {
                             mc.options.pauseOnLostFocus = false;
                         }
+                        // don't throttle to AFK frame rates while being driven in the background (only when minimised)
+                        if (mc.options.inactivityFpsLimit().get() != net.minecraft.client.InactivityFpsLimit.MINIMIZED) {
+                            mc.options.inactivityFpsLimit().set(net.minecraft.client.InactivityFpsLimit.MINIMIZED);
+                        }
                     });
         }
         server = new BridgeServer(config);
         Tools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.CinemaTools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.DroneTools.registerAll(server);
         try {
             server.start();
         } catch (Exception e) {

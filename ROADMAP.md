@@ -23,7 +23,18 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] `find_entities`
 - [x] Tested live: orbit around a moth, chase cam on a flying wild moth, rail preview, 90-frame rail render → MP4
 
-## 0.3: testing power
+## 0.3: drone + tripods (done 2026-11-09)
+
+- [x] Physics drone (`drone_fly`): inertia, accel/speed limits, yaw-rate limit, banking, stabilised gimbal, hover wobble, ground clearance; deterministic under capture_program
+- [x] Autonomous modes: hover, mission (waypoints + holds + framing target), orbit, follow (aerial follow-me), dronie, reveal, topdown, fpv; pilot via sticks (`drone_control`)
+- [x] Tripods: place / ring / track a target / view / list / remove; `tripod_shots` multi-angle stills; **`multicam`** synced per-angle video via tick stepping
+- [x] Player hotkeys: K drone pilot (WASD/Space/Shift/Sprint + mouse), Y place tripod, U cycle tripods, J record; HUD telemetry
+- [x] Unfocused windows aren't FPS-throttled (inactivity limit = minimized only)
+- [x] Tested live: aerial follow of a sprinting player + Lumens, dronie, top-down, 4-tripod stills, 4-angle 3 s multicam
+- [ ] Fix: the first 1–2 frames of `capture_program` can show the pre-reset view (drone restart)
+- [ ] Visible drone/tripod models for other players (optional "behind the scenes" shots)
+
+## 0.4: testing power
 
 - [ ] **Event stream:** subscribe to chat, deaths, advancements, screen opens, entity spawns near the player (SSE on `/mcp` GET)
 - [ ] `look_at_entity` / `follow_entity` (camera or player tracks a mob), `nearest(type)` helper
@@ -33,7 +44,7 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [ ] Assertions for scripted tests: `expect` (entity present, block state, chat line) with timeouts → pass/fail report
 - [ ] A second "bot" client profile (offline-mode dev server) so tests don't take over the player's own game
 
-## 0.4: promo studio
+## 0.5: promo studio
 
 - [ ] **Hi-res stills:** offscreen render target at any size (4K/8K) without resizing the window; supersampling
 - [ ] **Panoramas:** 360° equirectangular and the 6-face cubemap (the vanilla title-screen panorama format)

@@ -85,6 +85,12 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 | | `camera_follow` | **chase cam** behind/above a target relative to its facing, smoothed (riding, flying shots) |
 | | `camera_dolly_zoom` | **vertigo** shot: pushes in while widening the FOV so the subject keeps its size |
 | | `capture_program` | render the playing move **frame-exact** → MP4. With `scene freeze` + `tick_step:1` at 20 fps, moving mobs advance exactly one tick per frame |
+| Drone | `drone_fly` | **physics drone**: inertia, speed/accel limits, banking, stabilised gimbal, hover wobble, ground clearance. Autonomous modes: `hover`, `mission` (waypoints + holds), `orbit`, **`follow`** (automatic aerial follow-me), `dronie`, `reveal`, `topdown`, `fpv` (racing lines, no gimbal), `pilot` |
+| | `drone_control` / `drone_status` | stick inputs for pilot mode; telemetry (altitude, speed, yaw, gimbal) |
+| Tripods | `tripod_place` / `tripod_ring` | fixed cameras at your view or aimed at a point; tracking tripods follow a target; a ring of N angles around a subject |
+| | `tripod_shots` | multi-angle stills from every tripod + one contact sheet |
+| | **`multicam`** | **synced multi-angle video**: steps the frozen world tick by tick and renders every tripod each tick, giving one MP4 per angle with identical action |
+| | `tripod_view` / `tripod_list` / `tripod_remove` | look through, list, remove |
 | Paths | `path_mark` | build a rail interactively: append the current view as a keyframe |
 | | `path_save` / `path_get` / `path_list` / `path_delete` | named paths in `config/lensbridge/paths/` |
 | | `path_show` | preview the rail in-world with particles (only on your client) |
@@ -94,6 +100,27 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 | | `list_captures` | recent files with full paths |
 
 Targets everywhere: `{"entity": id}`, `{"nearest": "mothlight:lumen"}`, `{"point": [x,y,z]}` or `{"player": true}`, with an optional `"offset": [dx,dy,dz]`.
+
+### In-game camera controls (for players)
+
+| Key (rebindable, "Lensbridge Camera") | Action |
+|---|---|
+| **K** | Fly the drone: WASD fly, Space/Shift up/down, Sprint fast, mouse = yaw + gimbal. Your player stays put. K lands. |
+| **Y** | Place a tripod at the current view |
+| **U** | Cycle through tripod views, then back to you |
+| **J** | Start/stop recording (30 fps, HUD hidden) → MP4 in `lensbridge/videos/` |
+
+A small HUD shows drone telemetry, the active camera and recording time; it's hidden whenever the HUD is hidden.
+
+### Drone recipe
+
+```text
+drone_fly {"mode":"follow","target":{"player":true},"distance":7,"height":5,"fov":70}   # automatic aerial follow-me
+record    {"seconds":8,"fps":30,"hide_hud":true}                                     # while you (or a mob) move
+drone_fly {"mode":"dronie","target":{"nearest":"mothlight:lumen"},"seconds":8,"distance":22,"height":14}
+capture_program {"seconds":9.5,"fps":30,"name":"dronie"}                             # frame-exact
+tripod_ring {"cx":10,"cy":65,"cz":4,"count":4,"radius":4.5} ; multicam {"seconds":4} # 4 synced angles
+```
 
 ### Cinematic recipe
 
@@ -131,7 +158,7 @@ camera_release {}
 
 ---
 
-## Limits (0.2)
+## Limits (0.3)
 
 - The director camera only shows chunks the player has loaded. For far shots, move the player too (spectator + `/tp`).
 - The capture resolution is the window size. Use `window_size` for 1080p, 1440p or 4K-wide windows.
