@@ -22,6 +22,7 @@ public final class DirectorCamera {
     }
 
     public static void set(Vec3 p, float y, float pi, float r, float f) {
+        program = null;
         pos = p;
         yaw = y;
         pitch = pi;
@@ -32,6 +33,51 @@ public final class DirectorCamera {
 
     public static void release() {
         active = false;
+        program = null;
+        manualTime = null;
+        last = null;
+    }
+
+    // ------------------------------------------------------------------ live programs (orbit, pan, rail, follow...)
+
+    public static volatile com.dreadedzombie.lensbridge.cinema.@org.jspecify.annotations.Nullable CameraProgram program;
+    /** When set (capture_program), the program is evaluated at this time instead of real time. */
+    public static volatile @org.jspecify.annotations.Nullable Double manualTime;
+    private static volatile long programStart;
+    private static volatile com.dreadedzombie.lensbridge.cinema.@org.jspecify.annotations.Nullable Shot last;
+    public static volatile boolean programFinished;
+
+    public static void play(com.dreadedzombie.lensbridge.cinema.CameraProgram p) {
+        last = null;
+        programFinished = false;
+        programStart = System.nanoTime();
+        manualTime = null;
+        program = p;
+        active = true;
+    }
+
+    public static double elapsed() {
+        Double m = manualTime;
+        return m != null ? m : (System.nanoTime() - programStart) / 1e9;
+    }
+
+    /** Called every frame from CameraMixin before the camera is applied. Render thread. */
+    public static void frame(float partialTick) {
+        com.dreadedzombie.lensbridge.cinema.CameraProgram p = program;
+        if (p == null || !active) {
+            return;
+        }
+        com.dreadedzombie.lensbridge.cinema.Shot s = p.eval(elapsed(), partialTick, last);
+        if (s == null) {
+            programFinished = true;      // hold the last frame
+            return;
+        }
+        last = s;
+        pos = s.pos();
+        yaw = s.yaw();
+        pitch = s.pitch();
+        roll = s.roll();
+        fov = s.fov();
     }
 
     /** yaw/pitch that look from {@code from} at {@code to} (Minecraft convention: yaw 0 = +Z, pitch + = down). */

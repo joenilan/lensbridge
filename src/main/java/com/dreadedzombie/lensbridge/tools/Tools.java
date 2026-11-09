@@ -11,6 +11,8 @@ import com.dreadedzombie.lensbridge.mcp.Tool;
 import com.dreadedzombie.lensbridge.mcp.Tool.Args;
 import com.dreadedzombie.lensbridge.mcp.Tool.Result;
 import com.dreadedzombie.lensbridge.mcp.Tool.Schema;
+import com.dreadedzombie.lensbridge.cinema.CameraPath;
+import com.dreadedzombie.lensbridge.cinema.Shot;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -320,19 +322,13 @@ public final class Tools {
         s.register(new Tool("capture_path", "Cinematic camera move through keyframes, saved frame by frame and encoded to MP4. "
                 + "Keyframes: [{x,y,z, yaw?,pitch?, look_at?:[x,y,z], fov?, roll?}, ...] (at least 2). Smooth Catmull-Rom "
                 + "path; angles from look_at if given.",
-                new Schema().req("keyframes", "array", "List of keyframe objects")
+                new Schema().prop("keyframes", "array", "List of keyframe objects").prop("path", "string", "Or: name of a saved path")
                         .prop("seconds", "number", "Duration (default 6)").prop("fps", "integer", "Default 30")
                         .prop("easing", "string", "smooth (ease in/out, default) | linear")
                         .prop("name", "string", "Output name").prop("gif", "boolean", "Also make a GIF")
                         .prop("hide_hud", "boolean", "default true").build(),
                 a -> {
-                    List<Key> keys = new ArrayList<>();
-                    for (JsonElement el : a.arr("keyframes")) {
-                        keys.add(Key.parse(el.getAsJsonObject()));
-                    }
-                    if (keys.size() < 2) {
-                        throw new IllegalArgumentException("Need at least 2 keyframes");
-                    }
+                    CameraPath path = a.has("path") ? CinemaTools.loadPath(a.str("path")) : CameraPath.parse(a.arr("keyframes"));
                     int fps = a.i("fps", 30);
                     int frames = Math.max(2, (int) Math.round(a.num("seconds", 6) * fps));
                     boolean smooth = !"linear".equals(a.str("easing", "smooth"));
@@ -342,7 +338,7 @@ public final class Tools {
                         if (smooth) {
                             t = t * t * (3 - 2 * t);
                         }
-                        shots.add(Key.sample(keys, t));
+                        shots.add(path.sample(t));
                     }
                     return render(shots, a.str("name", "path_" + Capture.stamp()), fps, a.bool("gif", false), a.bool("hide_hud", true));
                 }));
@@ -396,70 +392,8 @@ public final class Tools {
 
     // ------------------------------------------------------------------ capture helpers
 
-    /** One camera placement. */
-    record Shot(Vec3 pos, float yaw, float pitch, float roll, float fov) {
-    }
-
-    /** A camera-path keyframe. */
-    record Key(Vec3 pos, Float yaw, Float pitch, Vec3 lookAt, float fov, float roll) {
-        static Key parse(JsonObject o) {
-            Vec3 p = new Vec3(o.get("x").getAsDouble(), o.get("y").getAsDouble(), o.get("z").getAsDouble());
-            Vec3 look = null;
-            if (o.has("look_at")) {
-                JsonArray l = o.getAsJsonArray("look_at");
-                look = new Vec3(l.get(0).getAsDouble(), l.get(1).getAsDouble(), l.get(2).getAsDouble());
-            }
-            return new Key(p, o.has("yaw") ? o.get("yaw").getAsFloat() : null, o.has("pitch") ? o.get("pitch").getAsFloat() : null,
-                    look, o.has("fov") ? o.get("fov").getAsFloat() : 0, o.has("roll") ? o.get("roll").getAsFloat() : 0);
-        }
-
-        float[] angles() {
-            if (this.lookAt != null) {
-                return DirectorCamera.lookAt(this.pos, this.lookAt);
-            }
-            return new float[]{this.yaw == null ? 0 : this.yaw, this.pitch == null ? 0 : this.pitch};
-        }
-
-        /** Catmull-Rom position through the keys; angles/fov interpolated between the surrounding keys. */
-        static Shot sample(List<Key> keys, double t) {
-            int n = keys.size() - 1;
-            double f = t * n;
-            int i = Math.min(n - 1, (int) Math.floor(f));
-            double u = f - i;
-            Key k0 = keys.get(Math.max(0, i - 1));
-            Key k1 = keys.get(i);
-            Key k2 = keys.get(i + 1);
-            Key k3 = keys.get(Math.min(n, i + 2));
-            Vec3 pos = catmull(k0.pos, k1.pos, k2.pos, k3.pos, u);
-            float yaw;
-            float pitch;
-            if (k1.lookAt != null && k2.lookAt != null) {
-                Vec3 look = k1.lookAt.lerp(k2.lookAt, u);
-                float[] yp = DirectorCamera.lookAt(pos, look);
-                yaw = yp[0];
-                pitch = yp[1];
-            } else {
-                float[] a1 = k1.angles();
-                float[] a2 = k2.angles();
-                float dy = ((a2[0] - a1[0]) % 360 + 540) % 360 - 180;    // shortest way round
-                yaw = (float) (a1[0] + dy * u);
-                pitch = (float) (a1[1] + (a2[1] - a1[1]) * u);
-            }
-            float fov = (float) (k1.fov + (k2.fov - k1.fov) * u);
-            float roll = (float) (k1.roll + (k2.roll - k1.roll) * u);
-            return new Shot(pos, yaw, pitch, roll, fov);
-        }
-
-        static Vec3 catmull(Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3, double t) {
-            double t2 = t * t;
-            double t3 = t2 * t;
-            return p1.scale(2).add(p2.subtract(p0).scale(t)).add(p0.scale(2).subtract(p1.scale(5)).add(p2.scale(4)).subtract(p3).scale(t2))
-                    .add(p3.subtract(p0).add(p1.scale(3)).subtract(p2.scale(3)).scale(t3)).scale(0.5);
-        }
-    }
-
     /** Render a list of director-camera shots to numbered frames, then encode. */
-    private static Result render(List<Shot> shots, String name, int fps, boolean gif, boolean hideHud) {
+    public static Result render(List<Shot> shots, String name, int fps, boolean gif, boolean hideHud) {
         Path dir = Capture.dir("frames").resolve(name);
         boolean wasActive = DirectorCamera.active;
         boolean hudBefore = Game.call(() -> mc().options.hideGui);
@@ -480,7 +414,7 @@ public final class Tools {
         return finish(files, dir, name, fps, gif);
     }
 
-    private static Result finish(List<Path> files, Path dir, String name, int fps, boolean gif) {
+    public static Result finish(List<Path> files, Path dir, String name, int fps, boolean gif) {
         Path videos = Capture.dir("videos");
         StringBuilder sb = new StringBuilder(files.size() + " frames in " + dir + "\n");
         try {

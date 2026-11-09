@@ -77,10 +77,41 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 | Direct | `camera_set` / `camera_look_at` / `camera_release` | free director camera (absolute or player-relative; roll; FOV) |
 | | `hud` / `window_size` | F1 toggle; resize the window (sets the capture resolution) |
 | | `scene` | `time`, `weather`, `freeze`, `step`, `lock_time` (needs op) |
+| Cinema | `find_entities` | find loaded mobs by type or name; returns the ids to lock onto |
+| | `camera_lock` | **target lock**: the camera holds position and smoothly keeps a moving target framed |
+| | `camera_orbit` | **live 360° orbit** around a target; follows it as it moves (speed, radius, height, sweep) |
+| | `camera_pan` | **360° pan** from a fixed spot (speed, sweep, pitch) |
+| | `camera_rail` | **rail cam** along a saved path or keyframes; once / loop / pingpong; optional target lock |
+| | `camera_follow` | **chase cam** behind/above a target relative to its facing, smoothed (riding, flying shots) |
+| | `camera_dolly_zoom` | **vertigo** shot: pushes in while widening the FOV so the subject keeps its size |
+| | `capture_program` | render the playing move **frame-exact** → MP4. With `scene freeze` + `tick_step:1` at 20 fps, moving mobs advance exactly one tick per frame |
+| Paths | `path_mark` | build a rail interactively: append the current view as a keyframe |
+| | `path_save` / `path_get` / `path_list` / `path_delete` | named paths in `config/lensbridge/paths/` |
+| | `path_show` | preview the rail in-world with particles (only on your client) |
 | Capture | `capture_orbit` | turntable around a point → frames → MP4 (+GIF) + contact sheet |
 | | `capture_path` | Catmull-Rom camera move through keyframes (`look_at`, FOV, roll, easing) → MP4 |
 | | `record` | real-time recording of the live view → MP4 (gameplay clips) |
 | | `list_captures` | recent files with full paths |
+
+Targets everywhere: `{"entity": id}`, `{"nearest": "mothlight:lumen"}`, `{"point": [x,y,z]}` or `{"player": true}`, with an optional `"offset": [dx,dy,dz]`.
+
+### Cinematic recipe
+
+```text
+find_entities   {"type":"mothlight:lumen"}                                  # → id 4321
+camera_orbit    {"target":{"entity":4321},"radius":3,"height":0.8,"speed":30,"fov":50}
+screenshot      {"hide_hud":true}                                           # check the framing
+capture_program {"seconds":12,"fps":30,"name":"lumen_orbit"}                # frame-exact 360° → MP4
+
+path_mark {"name":"glide","reset":true}   ... move the view ...   path_mark {"name":"glide"}  (repeat)
+path_show {"name":"glide"}                                                  # see the rail
+camera_rail {"path":"glide","seconds":10,"target":{"nearest":"mothlight:lumen"}}
+record {"seconds":10,"fps":30}                                              # live, real time
+
+scene {"freeze":true}                                                       # perfectly smooth moving subjects:
+camera_follow {"target":{"entity":4321},"distance":3}
+capture_program {"seconds":5,"fps":20,"tick_step":1,"name":"chase"}
+```
 
 ### Promo recipe
 
@@ -100,7 +131,7 @@ camera_release {}
 
 ---
 
-## Limits (0.1)
+## Limits (0.2)
 
 - The director camera only shows chunks the player has loaded. For far shots, move the player too (spectator + `/tp`).
 - The capture resolution is the window size. Use `window_size` for 1080p, 1440p or 4K-wide windows.

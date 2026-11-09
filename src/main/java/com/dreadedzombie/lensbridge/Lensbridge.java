@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 @Mod(value = Lensbridge.MODID, dist = Dist.CLIENT)
 public final class Lensbridge {
     public static final String MODID = "lensbridge";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.2.0";
     public static final Logger LOGGER = LogUtils.getLogger();
     private static BridgeConfig config;
     private static BridgeServer server;
@@ -30,6 +30,7 @@ public final class Lensbridge {
         NeoForge.EVENT_BUS.addListener(ChatLog::onChat);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onAngles);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onFov);
+        NeoForge.EVENT_BUS.addListener(com.dreadedzombie.lensbridge.tools.CinemaTools::onTick);
         if (!config.enabled) {
             LOGGER.info("Lensbridge is disabled in config/lensbridge.json");
             return;
@@ -45,6 +46,7 @@ public final class Lensbridge {
         }
         server = new BridgeServer(config);
         Tools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.CinemaTools.registerAll(server);
         try {
             server.start();
         } catch (Exception e) {

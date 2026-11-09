@@ -25,6 +25,7 @@ public abstract class CameraMixin {
     private void lensbridge$director(Level level, Entity entity, boolean detached, boolean mirror, float partialTick,
                                      CallbackInfo ci) {
         if (DirectorCamera.active) {
+            DirectorCamera.frame(partialTick);
             this.setRotation(DirectorCamera.yaw, DirectorCamera.pitch, DirectorCamera.roll);
             this.setPosition(DirectorCamera.pos);
         }

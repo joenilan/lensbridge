@@ -14,7 +14,16 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] Keeps running unfocused (no pause menu when driven in the background)
 - [x] Tested end to end against a live 1.21.11 client: handshake, status, screenshots, director camera, 60-frame orbit → MP4
 
-## 0.2: testing power
+## 0.2: cinema (done 2026-11-09)
+
+- [x] Targets: entity id / nearest type / point / player, aim offset, smooth partial-tick tracking of moving mobs
+- [x] Live camera programs evaluated every frame: **lock**, **orbit** (follows moving targets), **pan** (360°), **rail** (spline; once/loop/pingpong; optional lock), **follow** (chase cam), **dolly zoom**
+- [x] `capture_program`: frame-exact rendering of any move at a fixed fps, with optional `tick_step` per frame for perfectly smooth moving subjects in a frozen world
+- [x] Named paths: `path_mark` (build interactively from the current view), save / get / list / delete, `path_show` particle preview
+- [x] `find_entities`
+- [x] Tested live: orbit around a moth, chase cam on a flying wild moth, rail preview, 90-frame rail render → MP4
+
+## 0.3: testing power
 
 - [ ] **Event stream:** subscribe to chat, deaths, advancements, screen opens, entity spawns near the player (SSE on `/mcp` GET)
 - [ ] `look_at_entity` / `follow_entity` (camera or player tracks a mob), `nearest(type)` helper
@@ -24,7 +33,7 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [ ] Assertions for scripted tests: `expect` (entity present, block state, chat line) with timeouts → pass/fail report
 - [ ] A second "bot" client profile (offline-mode dev server) so tests don't take over the player's own game
 
-## 0.3: promo studio
+## 0.4: promo studio
 
 - [ ] **Hi-res stills:** offscreen render target at any size (4K/8K) without resizing the window; supersampling
 - [ ] **Panoramas:** 360° equirectangular and the 6-face cubemap (the vanilla title-screen panorama format)
