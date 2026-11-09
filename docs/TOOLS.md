@@ -499,13 +499,15 @@ Record the live view (player camera, director camera, drone...) in REAL TIME - t
 
 ### `capture_orbit`
 
-Turntable shot: the director camera circles a point and every frame is saved, then encoded to MP4 (and optional GIF) with ffmpeg. Returns a contact sheet preview. Tip: scene freeze first.
+Turntable shot: the director camera circles a point (or a target entity's centre) and every frame is saved, then encoded to MP4 (and optional GIF) with ffmpeg. Returns a contact sheet preview. Tip: scene freeze first; world=step + fps 60 for the smoothest turntables.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
-| `cx` | number | yes | Centre X |
-| `cy` | number | yes | Centre Y |
-| `cz` | number | yes | Centre Z |
+| `cx` | number |  | Centre X (or use target) |
+| `cy` | number |  | Centre Y |
+| `cz` | number |  | Centre Z |
+| `target` | object |  | Centre on a target instead: {entity:id} / {nearest:type}; centre = middle of its hitbox, plus optional offset [dx,dy,dz] |
+| `auto_center` | boolean |  | With an entity target (default true): measure where the MODEL really is (two probe views, with/without the entity) and centre on it; radius defaults to fit the model |
 | `radius` | number |  | Distance (default 4) |
 | `height` | number |  | Camera height above centre (default 1.5) |
 | `frames` | integer |  | Frame count (default 120) |
@@ -516,7 +518,7 @@ Turntable shot: the director camera circles a point and every frame is saved, th
 | `name` | string |  | Output name |
 | `gif` | boolean |  | Also make a GIF |
 | `hide_hud` | boolean |  | default true |
-| `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + exactly one tick per 1/20 s of video - perfect smoothness), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
+| `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + world advanced exactly 20/fps ticks per frame, interpolated - perfectly smooth at any fps, e.g. 60), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
 
 ### `capture_path`
 
@@ -532,7 +534,7 @@ Cinematic camera move through keyframes, saved frame by frame and encoded to MP4
 | `name` | string |  | Output name |
 | `gif` | boolean |  | Also make a GIF |
 | `hide_hud` | boolean |  | default true |
-| `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + exactly one tick per 1/20 s of video - perfect smoothness), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
+| `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + world advanced exactly 20/fps ticks per frame, interpolated - perfectly smooth at any fps, e.g. 60), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
 
 ### `capture_program`
 
@@ -542,7 +544,7 @@ Render the currently playing camera move (orbit/pan/rail/follow/dolly/lock) fram
 |---|---|---|---|
 | `seconds` | number |  | Length (default: the move's own duration, or 6) |
 | `fps` | integer |  | Default 30 |
-| `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + exactly one tick per 1/20 s of video - perfect smoothness), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
+| `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + world advanced exactly 20/fps ticks per frame, interpolated - perfectly smooth at any fps, e.g. 60), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
 | `tick_step` | integer |  | Legacy: >0 = world 'step' |
 | `name` | string |  | Output name |
 | `gif` | boolean |  | Also make a GIF |

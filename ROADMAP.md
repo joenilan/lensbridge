@@ -23,7 +23,11 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] `find_entities`
 - [x] Tested live: orbit around a moth, chase cam on a flying wild moth, rail preview, 90-frame rail render → MP4
 
-## 0.3.2: stealth capture + looks (2026-11-09)
+## 0.3.2: stealth capture, looks, smooth turntables (2026-11-09)
+
+- [x] Step renders interpolate the partial tick per frame (smooth at 60 fps, no 20 Hz judder); multicam too
+- [x] `capture_orbit` target + **auto-centre**: shown/hidden probe diff finds the model's real centre and size (largest blob, stable frames, immune to twinkling stars/particles)
+- [x] Renders leave the world frozen if it was frozen before
 
 - [x] Stealth capture: director-camera frames render but aren't presented, so the player's screen holds its last frame (no flashing); AI cameras are hidden unless `camera_preview` is on; player hotkeys preview live
 - [x] `scene look` presets (qa, noon, golden, sunset, blue_hour, night, dawn, overcast) + Iris shaders on/off (reflection, optional)

@@ -86,6 +86,10 @@ scene  {"freeze":false} ; camera_release
 - Live moves (`camera_orbit`, `camera_rail`, `camera_follow`, `drone_fly`...) keep running in the background. Render them with `capture_program`, or film them live with `record`.
 - **Drone** for organic aerial footage: `follow` (auto aerial follow-me), `dronie`, `reveal`, `topdown`, `orbit`, `mission` (waypoints), `fpv`. **Rails and orbits** for precise, repeatable moves.
 - **Multicam** = the same action from every enabled tripod, in sync, one MP4 per angle.
+- **Turntables of a mob:** `capture_orbit {"target":{"entity":id}, "fps":60, "frames":240, "world":"step"}`.
+  - `auto_center` (on by default with an entity target) finds where the *model* really is, which is often well above or beside the entity's position, and picks a radius so it fills ~70% of the frame. Pass `radius`/`height` to override.
+  - `step` at 60 fps is perfectly smooth: the world advances exactly 20/60 tick per frame with interpolated animation.
+  - Swap subjects with the world **running** for a few seconds (kill + summon), then freeze. A mob killed while frozen stays as a frozen corpse and may be picked as the next target.
 
 ---
 
