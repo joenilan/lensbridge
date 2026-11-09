@@ -28,7 +28,8 @@
   .name { font-weight:600; flex:1; word-break:break-all; }
   .fields { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; }
   .fields label { font-size:11px; color:var(--dim); display:grid; gap:2px; }
-  .fields input { width:100%; background:#111318; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 4px; font:12px monospace; }
+  .fields input { width:100%; background:#111318; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 3px; font:12px monospace; -moz-appearance:textfield; appearance:textfield; }
+  .fields input::-webkit-inner-spin-button, .fields input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
   .pad { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; }
   .pad button { padding:4px 0; font-size:12px; }
   .toggle { display:flex; gap:4px; align-items:center; color:var(--dim); font-size:12px; }
@@ -99,7 +100,7 @@ function renderGrid() {
 }
 function card(t) {
   const c = document.createElement('div'); c.className = 'card' + (t.enabled ? '' : ' disabled') + (EDITING === t.name ? ' editing' : ''); c.id = 'card-' + t.name;
-  const f = (k, step) => `<label>${k}<input type="number" step="${step}" value="${(+t[k]).toFixed(step < 1 ? 2 : 0)}" data-k="${k}"></label>`;
+  const f = (k, step) => `<label>${k}<input type="number" step="${step}" value="${(+t[k]).toFixed(step < 1 ? 1 : 0)}" data-k="${k}"></label>`;
   c.innerHTML = `
     <div class="thumb">${t.has_thumb ? `<img src="${thumbUrl(t)}" alt="">` : 'no thumbnail yet'}</div>
     <div class="body">
