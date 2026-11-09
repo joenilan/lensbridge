@@ -179,6 +179,18 @@ public final class ManagerTools {
                 + "preview -> off). Same as pressing Esc in game.", new Schema().build(),
                 a -> Result.text(Game.call(UserControls::exitCameraMode) ? "Back to the player's view" : "Already on the player's view")));
 
+        s.register(new Tool("guide", "Read Lensbridge's bundled docs. Start every session with the agent guide (default): ground "
+                + "rules, workflow, lighting, staging, framing and video. Other names: tools (full tool reference), user-guide, readme.",
+                new Schema().prop("name", "string", "agent-guide (default) / tools / user-guide / readme").build(),
+                a -> {
+                    String name = a.str("name", "agent-guide");
+                    String md = com.dreadedzombie.lensbridge.mcp.BridgeServer.doc(name);
+                    if (md == null) {
+                        throw new IllegalArgumentException("No guide '" + name + "'. Try: agent-guide, tools, user-guide, readme");
+                    }
+                    return Result.text(md);
+                }));
+
         s.register(new Tool("props", "Camera props for behind-the-scenes shots: visible models of the tripods (camera on "
                 + "legs), the drone (spinning rotors) and the current rail. Client-only. Normal shots stay clean: props show "
                 + "only in the player's view if player_view is on, and in captures from 'crew' cameras (e.g. a drone or a "

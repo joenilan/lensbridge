@@ -187,3 +187,10 @@ idea {
         downloadJavadoc = true
     }
 }
+
+// Ship the guides and the license inside the jar: the bridge serves them at /docs and through the `guide` tool.
+tasks.named('processResources', ProcessResources).configure {
+    from(rootProject.file('docs')) { into 'assets/lensbridge/docs' }
+    from(rootProject.file('README.md')) { into 'assets/lensbridge/docs' }
+    from(rootProject.file('LICENSE'))
+}

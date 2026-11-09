@@ -1,6 +1,6 @@
 # Lensbridge agent guide
 
-You are driving a **live Minecraft client** that a person may be playing or watching. Lensbridge gives you eyes (game-only screenshots), cameras (director camera, tripods, drone), staging (time, weather, freeze) and capture (stills, orbits, rails, drone shots, multicam, real-time video). This guide is how to use it well. The full tool list with arguments is in [TOOLS.md](TOOLS.md).
+You are driving a **live Minecraft client** that a person may be playing or watching. Lensbridge gives you eyes (game-only screenshots), cameras (director camera, tripods, drone), staging (time, weather, freeze) and capture (stills, orbits, rails, drone shots, multicam, real-time video). This guide is how to use it well. The full tool list with arguments: call `guide {"name":"tools"}` (also in docs/TOOLS.md, and at http://127.0.0.1:25599/docs/tools).
 
 ---
 

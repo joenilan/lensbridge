@@ -54,6 +54,7 @@ public final class BridgeServer {
         this.http.createContext("/mcp", this::handleMcp);
         this.http.createContext("/api/", this::handleRest);
         this.http.createContext("/ui", this::handleUi);
+        this.http.createContext("/docs", this::handleDocs);
         this.http.createContext("/file", this::handleFile);
         this.http.start();
         Lensbridge.LOGGER.info("Lensbridge listening on http://{}:{}/mcp ({} tools)", this.config.host, this.config.port, this.tools.size());
@@ -63,6 +64,47 @@ public final class BridgeServer {
         if (this.http != null) {
             this.http.stop(0);
         }
+    }
+
+    /** Bundled guides by short name (no token: they are public docs, and only served on this machine). */
+    public static final java.util.Map<String, String> DOCS = java.util.Map.of(
+            "user-guide", "USER_GUIDE.md", "agent-guide", "AGENT_GUIDE.md", "tools", "TOOLS.md", "readme", "README.md");
+
+    public static String doc(String name) {
+        String file = DOCS.get(name);
+        if (file == null) {
+            return null;
+        }
+        try (var in = BridgeServer.class.getResourceAsStream("/assets/lensbridge/docs/" + file)) {
+            return in == null ? null : new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /** /docs (index) and /docs/<name>: the bundled guides, as readable pages. */
+    private void handleDocs(HttpExchange ex) throws IOException {
+        String path = ex.getRequestURI().getPath();
+        String name = path.length() > 6 ? path.substring(6) : "";
+        String md = name.isEmpty() ? null : doc(name);
+        StringBuilder html = new StringBuilder("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                + "<title>Lensbridge docs</title><style>body{background:#111318;color:#e6e6ea;font:15px/1.55 system-ui,sans-serif;"
+                + "max-width:900px;margin:24px auto;padding:0 16px}a{color:#f5c542}pre{white-space:pre-wrap;font:14px/1.55 ui-monospace,"
+                + "monospace;background:#181b22;padding:16px;border:1px solid #2a2e38;border-radius:6px}</style>"
+                + "<p><a href='/docs/user-guide'>User guide</a> · <a href='/docs/agent-guide'>Agent guide</a> · "
+                + "<a href='/docs/tools'>Tool reference</a> · <a href='/docs/readme'>README</a></p>");
+        if (md == null) {
+            html.append("<h1>Lensbridge docs</h1><p>Pick a guide above.</p>");
+        } else {
+            html.append("<pre>").append(md.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")).append("</pre>");
+        }
+        byte[] page = html.toString().getBytes(StandardCharsets.UTF_8);
+        ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+        ex.sendResponseHeaders(md == null && !name.isEmpty() ? 404 : 200, page.length);
+        try (OutputStream out = ex.getResponseBody()) {
+            out.write(page);
+        }
+        ex.close();
     }
 
     private void handleUi(HttpExchange ex) throws IOException {
@@ -283,8 +325,8 @@ public final class BridgeServer {
     }
 
     private static final String INSTRUCTIONS = """
-            Lensbridge drives a LIVE Minecraft client that a person may be playing. Full guide: docs/AGENT_GUIDE.md in the \
-            Lensbridge repo; tool reference: docs/TOOLS.md.
+            Lensbridge drives a LIVE Minecraft client that a person may be playing. Read the full agent guide first: call the \
+            `guide` tool (or guide {"name":"tools"} for the tool reference).
             Rules: (1) Start with `status`. (2) NEVER use the player's own view as your camera - frame with camera_look_at, \
             tripods (tripod_place/tripod_ring) or drone_fly; with stealth capture the player's screen doesn't change. You may \
             teleport the player near a location only so its chunks load (ask if they are playing). (3) Never build scenes block \

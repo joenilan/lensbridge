@@ -1,6 +1,6 @@
 # Lensbridge tool reference
 
-*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (58 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
+*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (59 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
 
 ## Observe
 
@@ -622,6 +622,10 @@ Preview a path in the world: draws the rail with particles (only on this client)
 | `seconds` | number |  | Default 10 |
 
 ## Other
+
+### `guide`
+
+Read Lensbridge's bundled docs. Start every session with the agent guide (default): ground rules, workflow, lighting, staging, framing and video. Other names: tools (full tool reference), user-guide, readme.
 
 ### `props`
 

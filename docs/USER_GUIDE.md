@@ -128,6 +128,10 @@ You see the same cameras in the Camera Manager, and you can take control of any 
 - Screenshots only ever contain the **game's** picture, never your desktop or other windows.
 - The assistant's cameras are invisible to you by default. They render behind the scenes, so your screen doesn't jump around. If you *want* to watch, the assistant can turn on preview.
 
+Once connected, the assistant reads Lensbridge's own guide by itself (the `guide` tool), so you can just tell it what you want: "set up three cameras around my build", "orbit the dragon at sunset", "show me how my new mob looks".
+
+The guides are also inside the mod: open the Camera Manager (Alt+C) and click **Help**, or go to `http://127.0.0.1:25599/docs`.
+
 To connect Claude Code:
 
 ```bash
