@@ -113,7 +113,7 @@ public final class UserControls {
         editing = name;
         enterWas = true;
         backWas = true;
-        say("Editing " + name + ": WASD/Space/Shift move, Sprint fast, mouse look, scroll zoom. Enter = save, Backspace = cancel");
+        say("Editing " + name + ": WASD/Space/Shift move, mouse look, scroll zoom. Enter = save, Esc/Backspace = cancel");
     }
 
     /** Client thread. */
@@ -138,6 +138,34 @@ public final class UserControls {
         stopPilot();
         say(msg);
         return msg;
+    }
+
+    /** Leave whatever camera mode the player is in (edit -> cancel, drone -> land, preview -> back). Client thread. */
+    public static boolean exitCameraMode() {
+        if (editing != null) {
+            finishEdit(false);
+            return true;
+        }
+        if (piloting()) {
+            stopPilot();
+            say("Drone landed - back to your view");
+            return true;
+        }
+        if (DirectorCamera.active && DirectorCamera.preview) {
+            DirectorCamera.release();
+            tripodIndex = -1;
+            say("Back to your view");
+            return true;
+        }
+        return false;
+    }
+
+    /** Esc while in a camera mode exits that mode instead of opening the pause menu. */
+    static void onScreenOpening(net.neoforged.neoforge.client.event.ScreenEvent.Opening event) {
+        if (event.getNewScreen() instanceof net.minecraft.client.gui.screens.PauseScreen && event.getCurrentScreen() == null
+                && exitCameraMode()) {
+            event.setCanceled(true);
+        }
     }
 
     static void onScroll(net.neoforged.neoforge.client.event.InputEvent.MouseScrollingEvent event) {
@@ -230,6 +258,17 @@ public final class UserControls {
             backWas = back;
         }
 
+        // Backspace also leaves a previewed camera / the drone (Esc is handled in onScreenOpening)
+        if (editing == null && DirectorCamera.active && DirectorCamera.preview && mc.screen == null) {
+            boolean back = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
+            if (back && !backWas) {
+                exitCameraMode();
+            }
+            backWas = back;
+        } else if (editing == null) {
+            backWas = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
+        }
+
         // drone pilot: keys -> sticks, mouse -> yaw/gimbal (the player stays put and keeps its rotation)
         if (piloting() && System.currentTimeMillis() >= Drone.aiSticksUntil) {
             boolean fast = mc.options.keySprint.isDown();
@@ -285,14 +324,19 @@ public final class UserControls {
         }
         GuiGraphics g = event.getGuiGraphics();
         List<String> lines = new ArrayList<>();
-        if (DirectorCamera.program instanceof Drone d) {
+        if (editing != null && DirectorCamera.program instanceof Drone d) {
+            lines.add("✋ EDITING " + editing + String.format(Locale.ROOT, "   FOV %.0f", d.fov()));
+            lines.add("WASD / Space / Shift move   Sprint fast   mouse look   scroll zoom");
+            lines.add("Enter = save    Esc / Backspace = cancel");
+        } else if (DirectorCamera.program instanceof Drone d) {
             lines.add("● DRONE " + d.telemetry());
             if (piloting()) {
-                lines.add("WASD fly  Space/Shift up/down  Sprint fast  mouse yaw+gimbal  Alt+D land");
+                lines.add("WASD fly  Space/Shift up/down  Sprint fast  mouse yaw+gimbal    Alt+D / Esc = land");
             }
-        } else if (DirectorCamera.active) {
+        } else if (DirectorCamera.active && DirectorCamera.preview) {
             lines.add("■ CAMERA " + (DirectorCamera.program != null ? DirectorCamera.program.describe() : "fixed")
-                    + (tripodIndex >= 0 ? "  (Alt+N next)" : ""));
+                    + (tripodIndex >= 0 ? "   Alt+N = next camera" : ""));
+            lines.add("Esc / Backspace = back to your view");
         }
         if (Recorder.running()) {
             lines.add(String.format(Locale.ROOT, "● REC %.1fs", Recorder.seconds()));

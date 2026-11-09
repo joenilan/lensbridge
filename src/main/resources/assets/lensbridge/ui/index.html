@@ -48,10 +48,10 @@
   <button onclick="load()">Reload</button>
   <button onclick="thumbsVisible()">Refresh thumbnails</button>
   <button class="primary" onclick="shootEnabled()">Shoot enabled</button>
-  <button onclick="api('tripod_preview',{})">Preview off</button>
+  <button onclick="api('exit_camera',{}).then(log)">Back to my view</button>
 </header>
 <div id="editbar"><span>✋ Controlling <b id="edname"></b> in game: WASD / Space / Shift to move, Sprint for speed, mouse to look, scroll to zoom.
-  Press <b>Enter</b> in game to save or <b>Backspace</b> to cancel, or use these buttons:</span>
+  Press <b>Enter</b> in game to save, <b>Esc</b> or <b>Backspace</b> to cancel, or use these buttons:</span>
   <button class="primary" onclick="finishEdit(true)">Save view</button><button onclick="finishEdit(false)">Cancel</button></div>
 <div id="groups"></div>
 <div id="grid"></div>
@@ -129,7 +129,7 @@ function card(t) {
   });
   c.querySelector('[data-a=thumb]').onclick = () => thumbs([t.name]);
   c.querySelector('[data-a=control]').onclick = async () => { await api('tripod_edit', { name:t.name }); log('Switch to the game window to fly ' + t.name); load(); };
-  c.querySelector('[data-a=preview]').onclick = async () => { await api('tripod_preview', { name:t.name }); log('Showing ' + t.name + ' on screen - "Preview off" to return'); };
+  c.querySelector('[data-a=preview]').onclick = async () => { await api('tripod_preview', { name:t.name }); log('Showing ' + t.name + ' on screen - press Esc in game (or Preview off) to return'); };
   c.querySelector('[data-a=fromview]').onclick = async () => { await api('tripod_set_from_view', { name:t.name }); await thumbs([t.name]); };
   c.querySelector('[data-a=delete]').onclick = async () => { if (confirm('Delete ' + t.name + '?')) { await api('tripod_remove', { name:t.name }); load(); } };
   return c;

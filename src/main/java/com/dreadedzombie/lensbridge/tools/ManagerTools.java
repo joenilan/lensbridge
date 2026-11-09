@@ -174,6 +174,10 @@ public final class ManagerTools {
                 new Schema().prop("save", "boolean", "Default true").build(),
                 a -> Result.text(Game.call(() -> UserControls.finishEdit(a.bool("save", true))))));
 
+        s.register(new Tool("exit_camera", "Return the player to their own view from any camera mode (edit -> cancel, drone -> land, "
+                + "preview -> off). Same as pressing Esc in game.", new Schema().build(),
+                a -> Result.text(Game.call(UserControls::exitCameraMode) ? "Back to the player's view" : "Already on the player's view")));
+
         s.register(new Tool("tripod_preview", "Show a tripod's view live on the player's screen (or 'off' to return to the player).",
                 new Schema().prop("name", "string", "Tripod name, omit to turn preview off").build(), a -> {
                     if (!a.has("name")) {
