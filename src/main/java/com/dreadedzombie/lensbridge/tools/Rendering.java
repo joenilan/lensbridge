@@ -33,6 +33,15 @@ public final class Rendering {
 
     /** Render {@code frames} frames; {@code setup} positions the camera / clock for frame i (called off-thread). */
     public static Result render(String name, int fps, int frames, IntConsumer setup, String world, boolean hideHud, boolean gif) {
+        com.dreadedzombie.lensbridge.Stealth.begin();
+        try {
+            return renderInner(name, fps, frames, setup, world, hideHud, gif);
+        } finally {
+            com.dreadedzombie.lensbridge.Stealth.end();
+        }
+    }
+
+    private static Result renderInner(String name, int fps, int frames, IntConsumer setup, String world, boolean hideHud, boolean gif) {
         boolean hudBefore = Game.call(() -> Game.mc().options.hideGui);
         Game.run(() -> Game.mc().options.hideGui = hideHud);
         String mode = world == null ? "sync" : world.toLowerCase(Locale.ROOT);
@@ -139,6 +148,22 @@ public final class Rendering {
      */
     public static Result record(String name, int fps, double seconds, double timelapseInterval, boolean hideHud, boolean gif,
                                 java.util.function.BooleanSupplier keepGoing) {
+        // recording a director/drone camera the player isn't previewing: keep it off their screen
+        boolean stealth = com.dreadedzombie.lensbridge.DirectorCamera.active && !com.dreadedzombie.lensbridge.DirectorCamera.preview;
+        if (stealth) {
+            com.dreadedzombie.lensbridge.Stealth.begin();
+        }
+        try {
+            return recordInner(name, fps, seconds, timelapseInterval, hideHud, gif, keepGoing);
+        } finally {
+            if (stealth) {
+                com.dreadedzombie.lensbridge.Stealth.end();
+            }
+        }
+    }
+
+    private static Result recordInner(String name, int fps, double seconds, double timelapseInterval, boolean hideHud, boolean gif,
+                                      java.util.function.BooleanSupplier keepGoing) {
         boolean hudBefore = Game.call(() -> Game.mc().options.hideGui);
         Game.run(() -> Game.mc().options.hideGui = hideHud);
         VideoStream video = Capture.stream(name, fps);

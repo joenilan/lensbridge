@@ -2,6 +2,12 @@
   "required": true,
   "package": "com.dreadedzombie.lensbridge.mixin",
   "compatibilityLevel": "JAVA_21",
-  "client": ["CameraMixin"],
-  "injectors": { "defaultRequire": 1 }
+  "client": [
+    "CameraMixin",
+    "MinecraftMixin",
+    "RenderSystemMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

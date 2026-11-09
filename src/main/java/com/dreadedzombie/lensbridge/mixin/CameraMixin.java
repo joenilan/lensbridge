@@ -24,8 +24,7 @@ public abstract class CameraMixin {
     @Inject(method = "setup", at = @At("TAIL"))
     private void lensbridge$director(Level level, Entity entity, boolean detached, boolean mirror, float partialTick,
                                      CallbackInfo ci) {
-        if (DirectorCamera.active) {
-            DirectorCamera.frame(partialTick);
+        if (DirectorCamera.shown()) {
             this.setRotation(DirectorCamera.yaw, DirectorCamera.pitch, DirectorCamera.roll);
             this.setPosition(DirectorCamera.pos);
         }
@@ -33,7 +32,7 @@ public abstract class CameraMixin {
 
     @Inject(method = "isDetached", at = @At("HEAD"), cancellable = true)
     private void lensbridge$detached(CallbackInfoReturnable<Boolean> cir) {
-        if (DirectorCamera.active) {
+        if (DirectorCamera.shown()) {
             cir.setReturnValue(true);
         }
     }

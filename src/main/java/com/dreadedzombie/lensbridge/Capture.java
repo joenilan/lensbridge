@@ -42,8 +42,19 @@ public final class Capture {
         return LocalDateTime.now().format(STAMP);
     }
 
+    private static volatile long lastGrab;
+
+    /** After an idle spell the render pipeline may hand back a stale frame; warm it up first. */
+    private static int warm(int settleFrames) {
+        long now = System.currentTimeMillis();
+        int s = now - lastGrab > 1500 ? Math.max(settleFrames, 12) : settleFrames;
+        lastGrab = now;
+        return s;
+    }
+
     /** Grab the current frame to {@code file} (PNG). Waits {@code settleFrames} frames first. */
     public static Path grab(Path file, int settleFrames) {
+        settleFrames = warm(settleFrames);
         if (settleFrames > 0) {
             Game.waitFrames(settleFrames);
         }
@@ -60,6 +71,7 @@ public final class Capture {
 
     /** Grab the current frame as an image (caller must close it). Off-thread. */
     public static NativeImage grabImage(int settleFrames) {
+        settleFrames = warm(settleFrames);
         if (settleFrames > 0) {
             Game.waitFrames(settleFrames);
         }
@@ -103,6 +115,15 @@ public final class Capture {
 
     /** Grab with the HUD temporarily hidden (restores the previous setting). */
     public static Path grabClean(Path file, boolean hideHud, int settleFrames) {
+        Stealth.begin();
+        try {
+            return grabCleanInner(file, hideHud, settleFrames);
+        } finally {
+            Stealth.end();
+        }
+    }
+
+    private static Path grabCleanInner(Path file, boolean hideHud, int settleFrames) {
         boolean before = Game.call(() -> Game.mc().options.hideGui);
         if (hideHud != before) {
             Game.run(() -> Game.mc().options.hideGui = hideHud);

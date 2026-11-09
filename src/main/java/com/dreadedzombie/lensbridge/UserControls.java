@@ -69,6 +69,7 @@ public final class UserControls {
         DirectorCamera.play(new Drone(Drone.Mode.PILOT, from, null, List.of(), false, maxSpeed, 8, 120, 2.5, 0.6, 0.6,
                 0, 0, 0, 0, 0, 0));
         piloting = true;
+        DirectorCamera.preview = true;
         if (p != null) {
             lockYaw = p.getYRot();
             lockPitch = p.getXRot();
@@ -118,6 +119,7 @@ public final class UserControls {
             } else {
                 Tripods.Tripod t = list.get(tripodIndex);
                 viewTripod(t);
+                DirectorCamera.preview = true;
                 say("Tripod " + (tripodIndex + 1) + "/" + list.size() + ": " + t.name());
             }
         }

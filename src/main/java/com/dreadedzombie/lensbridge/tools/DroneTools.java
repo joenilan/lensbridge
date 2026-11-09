@@ -181,6 +181,8 @@ public final class DroneTools {
                 a -> {
                     List<Tripods.Tripod> list = pick(a);
                     String prefix = a.str("name", "angles_" + Capture.stamp());
+                    com.dreadedzombie.lensbridge.Stealth.begin();
+                    try {
                     List<Path> files = new ArrayList<>();
                     boolean hud = Game.call(() -> Game.mc().options.hideGui);
                     Game.run(() -> Game.mc().options.hideGui = true);
@@ -198,6 +200,9 @@ public final class DroneTools {
                     StringBuilder sb = new StringBuilder();
                     files.forEach(f -> sb.append(f).append('\n'));
                     return Result.text(sb + "Sheet: " + sheet).addImage(sheet, com.dreadedzombie.lensbridge.Lensbridge.config().previewMaxEdge);
+                    } finally {
+                        com.dreadedzombie.lensbridge.Stealth.end();
+                    }
                 }));
 
         s.register(new Tool("multicam", "Synced multi-angle VIDEO at true world speed: freezes the world and, tick by tick, renders every tripod's view, "
@@ -209,6 +214,8 @@ public final class DroneTools {
                     int fps = a.i("fps", 20);
                     int frames = (int) Math.round(a.num("seconds", 5) * fps);
                     String prefix = a.str("name", "multicam_" + Capture.stamp());
+                    com.dreadedzombie.lensbridge.Stealth.begin();
+                    try {
                     Map<String, com.dreadedzombie.lensbridge.VideoStream> out = new LinkedHashMap<>();
                     boolean hud = Game.call(() -> Game.mc().options.hideGui);
                     Game.run(() -> {
@@ -258,6 +265,9 @@ public final class DroneTools {
                     }
                     Path sheet = Capture.contactSheet(firsts, firsts.size(), Capture.dir("videos").resolve(prefix + "_angles.png"));
                     return Result.text(sb + "Angles sheet: " + sheet).addImage(sheet, com.dreadedzombie.lensbridge.Lensbridge.config().previewMaxEdge);
+                    } finally {
+                        com.dreadedzombie.lensbridge.Stealth.end();
+                    }
                 }));
     }
 

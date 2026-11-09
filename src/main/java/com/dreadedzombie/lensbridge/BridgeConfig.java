@@ -23,6 +23,8 @@ public final class BridgeConfig {
     public int previewMaxEdge = 1280;
     /** Keep the game running (no pause menu) when its window loses focus, so it can be driven in the background. */
     public boolean keepRunningUnfocused = true;
+    /** Capture director-camera shots without showing them in the window (the screen holds its last frame instead of flashing). */
+    public boolean stealthCapture = true;
     /** Path or name of the ffmpeg binary used to encode videos. */
     public String ffmpeg = "ffmpeg";
 

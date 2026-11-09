@@ -31,8 +31,24 @@ public final class DirectorCamera {
         active = true;
     }
 
+    /** When true the player watches the director camera live (hotkey drone/tripods, camera_preview). */
+    public static volatile boolean preview;
+
+    /** Whether this frame should be seen through the director camera. */
+    public static boolean shown() {
+        return active && (preview || Stealth.active() || !Lensbridge.config().stealthCapture);
+    }
+
+    /** Advance live programs every frame (even while not shown, so drones keep flying). */
+    static void onFramePre(net.neoforged.neoforge.client.event.RenderFrameEvent.Pre event) {
+        if (active) {
+            frame(event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        }
+    }
+
     public static void release() {
         active = false;
+        preview = false;
         program = null;
         manualTime = null;
         last = null;
@@ -90,7 +106,7 @@ public final class DirectorCamera {
     }
 
     static void onAngles(ViewportEvent.ComputeCameraAngles event) {
-        if (active) {
+        if (shown()) {
             event.setYaw(yaw);
             event.setPitch(pitch);
             event.setRoll(roll);
@@ -98,7 +114,7 @@ public final class DirectorCamera {
     }
 
     static void onFov(ViewportEvent.ComputeFov event) {
-        if (active && fov > 0) {
+        if (shown() && fov > 0) {
             event.setFOV(fov);
         }
     }

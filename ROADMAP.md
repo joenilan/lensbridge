@@ -23,6 +23,12 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] `find_entities`
 - [x] Tested live: orbit around a moth, chase cam on a flying wild moth, rail preview, 90-frame rail render → MP4
 
+## 0.3.2: stealth capture + looks (2026-11-09)
+
+- [x] Stealth capture: director-camera frames render but aren't presented, so the player's screen holds its last frame (no flashing); AI cameras are hidden unless `camera_preview` is on; player hotkeys preview live
+- [x] `scene look` presets (qa, noon, golden, sunset, blue_hour, night, dawn, overcast) + Iris shaders on/off (reflection, optional)
+- [x] Capture warm-up after idle (fixes stale first frames)
+
 ## 0.3: drone + tripods (done 2026-11-09)
 
 - [x] Physics drone (`drone_fly`): inertia, accel/speed limits, yaw-rate limit, banking, stabilised gimbal, hover wobble, ground clearance; deterministic under capture_program
@@ -35,7 +41,21 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [ ] Fix: the first 1–2 frames of `capture_program` can show the pre-reset view (drone restart)
 - [ ] Visible drone/tripod models for other players (optional "behind the scenes" shots)
 
-## 0.4: testing power
+## 0.4: Showcase Stages for modmakers (owner's headline idea, 2026-11-09)
+
+Turn the Mothlight QA stage into a reusable template so any modmaker can make a showcase of their own items, blocks and mobs at any size.
+
+- [ ] `stage_build {namespace, include, exclude, backdrop: gray|black|white|chroma|<block>, layout: rows|grid, spacing, scale}`: reads the mod's registries and builds the whole stage in one go:
+  - neutral backdrop walls; world frozen first
+  - mobs held still (NoAI) on pedestals; blocks on plinths; items in frames
+  - built server-side, never block by block: directly on the integrated server in singleplayer, or via an optional server half of Lensbridge on dedicated servers
+- [ ] Auto tripods sized to each exhibit (bounding box → distance and FOV)
+- [ ] `stage_shoot {look, shaders: on|off|both, orbits}`: one still per exhibit, optional 360° orbits per mob, contact sheets, and an index page (HTML/Markdown) ready for CurseForge/Modrinth
+- [ ] Any output size (needs offscreen hi-res rendering, see 0.6)
+- [ ] Template file (`.lensbridge-stage.json`) to save, tweak and re-run a stage after asset changes
+- [ ] First real use: Mothlight's stage (its datapack-function stage is the prototype)
+
+## 0.5: testing power
 
 - [ ] **Event stream:** subscribe to chat, deaths, advancements, screen opens, entity spawns near the player (SSE on `/mcp` GET)
 - [ ] `look_at_entity` / `follow_entity` (camera or player tracks a mob), `nearest(type)` helper
@@ -45,7 +65,7 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [ ] Assertions for scripted tests: `expect` (entity present, block state, chat line) with timeouts → pass/fail report
 - [ ] A second "bot" client profile (offline-mode dev server) so tests don't take over the player's own game
 
-## 0.5: promo studio
+## 0.6: promo studio
 
 - [ ] **Hi-res stills:** offscreen render target at any size (4K/8K) without resizing the window; supersampling
 - [ ] **Panoramas:** 360° equirectangular and the 6-face cubemap (the vanilla title-screen panorama format)

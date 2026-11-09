@@ -242,6 +242,13 @@ public final class Tools {
                     return Result.text("Camera at " + vec(cam) + " yaw " + fmt(yp[0]) + " pitch " + fmt(yp[1]));
                 }));
 
+        s.register(new Tool("camera_preview", "Show the director camera live on the player's screen (on), or keep it hidden so "
+                + "captures never disturb the player's view (off, default).",
+                new Schema().req("on", "boolean", "").build(), a -> {
+                    DirectorCamera.preview = a.bool("on", false);
+                    return Result.text("Camera preview " + (DirectorCamera.preview ? "ON - the player sees the camera" : "OFF - captures are invisible"));
+                }));
+
         s.register(new Tool("camera_release", "Return to the normal player camera.", new Schema().build(), a -> {
             DirectorCamera.release();
             return Result.text("camera released");
@@ -262,13 +269,39 @@ public final class Tools {
 
         s.register(new Tool("scene", "Stage a scene with one call (sends commands; needs op): time, weather, freeze the "
                 + "world (/tick freeze) so everything holds still for shots, step frozen ticks, clear the weather/time cycle.",
-                new Schema().prop("time", "string", "day | noon | sunset | night | midnight | sunrise | or a tick number")
+                new Schema().prop("look", "string", "Lighting preset: qa (shaders off, morning light, clear - honest neutral look), "
+                        + "noon, golden (low warm sun), sunset, blue_hour, night, dawn, overcast")
+                        .prop("shaders", "boolean", "Iris shaders on/off (if Iris is installed)")
+                        .prop("time", "string", "day | noon | sunset | night | midnight | sunrise | or a tick number")
                         .prop("weather", "string", "clear | rain | thunder")
                         .prop("freeze", "boolean", "true = /tick freeze, false = /tick unfreeze")
                         .prop("step", "integer", "Advance a frozen world by N ticks")
                         .prop("lock_time", "boolean", "Stop the day cycle (gamerule)").build(),
                 a -> {
                     List<String> cmds = new ArrayList<>();
+                    StringBuilder extra = new StringBuilder();
+                    if (a.has("look")) {
+                        String[] preset = switch (a.str("look")) {
+                            case "qa" -> new String[]{"2500", "clear", "off"};
+                            case "noon" -> new String[]{"6000", "clear", null};
+                            case "golden" -> new String[]{"11800", "clear", null};
+                            case "sunset" -> new String[]{"12600", "clear", null};
+                            case "blue_hour" -> new String[]{"13300", "clear", null};
+                            case "night" -> new String[]{"18000", "clear", null};
+                            case "dawn" -> new String[]{"23300", "clear", null};
+                            case "overcast" -> new String[]{"4000", "rain", null};
+                            default -> throw new IllegalArgumentException("Unknown look " + a.str("look"));
+                        };
+                        cmds.add("time set " + preset[0]);
+                        cmds.add("weather " + preset[1]);
+                        cmds.add("gamerule advance_time false");
+                        if (preset[2] != null && !a.has("shaders")) {
+                            extra.append(Game.call(() -> com.dreadedzombie.lensbridge.Shaders.set(false))).append("; ");
+                        }
+                    }
+                    if (a.has("shaders")) {
+                        extra.append(Game.call(() -> com.dreadedzombie.lensbridge.Shaders.set(a.bool("shaders", true)))).append("; ");
+                    }
                     if (a.has("time")) {
                         cmds.add("time set " + a.str("time"));
                     }
@@ -288,7 +321,7 @@ public final class Tools {
                         Game.run(() -> player().connection.sendCommand(c));
                         Game.sleep(150);
                     }
-                    return Result.text("Sent: " + String.join(" ; ", cmds) + " (see chat_log)");
+                    return Result.text(extra + "Sent: " + String.join(" ; ", cmds) + " (see chat_log)");
                 }));
 
         // ================================================================== capture (promo)
@@ -420,7 +453,9 @@ public final class Tools {
         sb.append("Time ").append(day).append(" (").append(day >= 13000 && day < 23000 ? "night" : "day").append(")")
                 .append(" weather ").append(mc.level.isThundering() ? "thunder" : mc.level.isRaining() ? "rain" : "clear").append('\n');
         sb.append("Holding ").append(describe(p.getMainHandItem())).append('\n');
-        sb.append("Director camera: ").append(DirectorCamera.active ? "ON at " + vec(DirectorCamera.pos) : "off")
+        sb.append("Director camera: ").append(DirectorCamera.active ? "ON at " + vec(DirectorCamera.pos)
+                        + (DirectorCamera.preview ? " (previewed on screen)" : " (hidden; shown only in captures)") : "off")
+                .append(" | shaders ").append(com.dreadedzombie.lensbridge.Shaders.state())
                 .append(" | HUD ").append(mc.options.hideGui ? "hidden" : "shown").append('\n');
         sb.append("Captures: ").append(mc.gameDirectory.toPath().resolve(Lensbridge.config().captureDir).toAbsolutePath());
         return sb.toString();

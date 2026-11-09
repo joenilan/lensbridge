@@ -30,6 +30,7 @@ public final class Lensbridge {
         NeoForge.EVENT_BUS.addListener(ChatLog::onChat);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onAngles);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onFov);
+        NeoForge.EVENT_BUS.addListener(DirectorCamera::onFramePre);
         NeoForge.EVENT_BUS.addListener(com.dreadedzombie.lensbridge.tools.CinemaTools::onTick);
         modBus.addListener(UserControls::registerKeys);
         NeoForge.EVENT_BUS.addListener(UserControls::onTick);
