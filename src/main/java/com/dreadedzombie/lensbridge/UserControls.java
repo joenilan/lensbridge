@@ -67,14 +67,77 @@ public final class UserControls {
 
     /** Start a pilotable drone at the given view (used by K and the drone_pilot tool). */
     public static void startPilot(Shot from, double maxSpeed) {
+        startPilot(from, maxSpeed, 8, 0.6, 2.5);
+    }
+
+    public static void startPilot(Shot from, double maxSpeed, double accel, double wobble, double bank) {
         LocalPlayer p = Minecraft.getInstance().player;
-        DirectorCamera.play(new Drone(Drone.Mode.PILOT, from, null, List.of(), false, maxSpeed, 8, 120, 2.5, 0.6, 0.6,
-                0, 0, 0, 0, 0, 0));
+        DirectorCamera.play(new Drone(Drone.Mode.PILOT, from, null, List.of(), false, maxSpeed, accel, 120, bank, wobble, 0.2,
+                0, 0, 0, 0, 0, from.fov()));
         piloting = true;
         DirectorCamera.preview = true;
         if (p != null) {
             lockYaw = p.getYRot();
             lockPitch = p.getXRot();
+        }
+    }
+
+    // ------------------------------------------------------------------ "take control" of a tripod (camera manager)
+
+    private static volatile String editing;
+    private static boolean enterWas;
+    private static boolean backWas;
+
+    public static String editing() {
+        return editing;
+    }
+
+    /** Fly a tripod's camera like a precise drone; Enter saves the view into it, Backspace cancels. Client thread. */
+    public static void startEdit(String name) {
+        Tripods.Tripod t = Tripods.all().get(name);
+        if (t == null) {
+            throw new IllegalArgumentException("No tripod " + name);
+        }
+        if (piloting()) {
+            stopPilot();
+        }
+        Shot s = Tripods.shot(t, 1.0F);
+        float fov = t.fov() > 0 ? t.fov() : Minecraft.getInstance().options.fov().get().floatValue();
+        startPilot(new Shot(s.pos(), s.yaw(), s.pitch(), 0, fov), 2.5, 14, 0, 0);
+        editing = name;
+        enterWas = true;
+        backWas = true;
+        say("Editing " + name + ": WASD/Space/Shift move, Sprint fast, mouse look, scroll zoom. Enter = save, Backspace = cancel");
+    }
+
+    /** Client thread. */
+    public static String finishEdit(boolean save) {
+        String name = editing;
+        if (name == null) {
+            return "Not editing";
+        }
+        editing = null;
+        String msg = "Cancelled - " + name + " unchanged";
+        if (save) {
+            Tripods.Tripod old = Tripods.all().get(name);
+            float fov = DirectorCamera.program instanceof Drone d ? d.fov() : DirectorCamera.fov;
+            Tripods.put(new Tripods.Tripod(name, DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, fov,
+                    old != null ? old.track() : null, old == null || old.enabled()));
+            msg = "Saved " + name;
+            Tripods.Tripod t = Tripods.all().get(name);
+            Thread th = new Thread(() -> com.dreadedzombie.lensbridge.tools.ManagerTools.thumbs(List.of(t)), "lensbridge-thumb");
+            th.setDaemon(true);
+            th.start();
+        }
+        stopPilot();
+        say(msg);
+        return msg;
+    }
+
+    static void onScroll(net.neoforged.neoforge.client.event.InputEvent.MouseScrollingEvent event) {
+        if (editing != null && DirectorCamera.program instanceof Drone d) {
+            d.setFov((float) Math.max(10, Math.min(140, d.fov() - event.getScrollDeltaY() * 2)));
+            event.setCanceled(true);
         }
     }
 
@@ -146,13 +209,30 @@ public final class UserControls {
             }
         }
 
+        // editing a tripod: Enter saves, Backspace cancels (edge-triggered); leaving pilot mode (K) cancels
+        if (editing != null) {
+            boolean enter = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_ENTER) || InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_KP_ENTER);
+            boolean back = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
+            if (mc.screen == null && enter && !enterWas) {
+                finishEdit(true);
+            } else if (mc.screen == null && back && !backWas) {
+                finishEdit(false);
+            } else if (!piloting()) {
+                editing = null;
+            }
+            enterWas = enter;
+            backWas = back;
+        }
+
         // drone pilot: keys -> sticks, mouse -> yaw/gimbal (the player stays put and keeps its rotation)
-        if (piloting()) {
+        if (piloting() && System.currentTimeMillis() >= Drone.aiSticksUntil) {
             boolean fast = mc.options.keySprint.isDown();
             float s = fast ? 1.0F : 0.45F;
             Drone.stickForward = ((mc.options.keyUp.isDown() ? 1 : 0) - (mc.options.keyDown.isDown() ? 1 : 0)) * s;
             Drone.stickRight = ((mc.options.keyRight.isDown() ? 1 : 0) - (mc.options.keyLeft.isDown() ? 1 : 0)) * s;
             Drone.stickUp = ((mc.options.keyJump.isDown() ? 1 : 0) - (mc.options.keyShift.isDown() ? 1 : 0)) * s;
+        }
+        if (piloting()) {
             float dYaw = p.getYRot() - lockYaw;
             float dPitch = p.getXRot() - lockPitch;
             if (DirectorCamera.program instanceof Drone d && (dYaw != 0 || dPitch != 0)) {

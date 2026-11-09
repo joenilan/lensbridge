@@ -108,6 +108,7 @@ Press **M** in game (or open `http://127.0.0.1:25599/ui#<token>`). Every camera 
 - edit x/y/z/yaw/pitch/FOV
 - nudge it (fwd/back/left/right/up/down, yaw, tilt, zoom); the thumbnail re-renders automatically
 - show it on your screen
+- **✋ Take control:** your in-game view becomes that camera. Fly it precisely (WASD/Space/Shift, Sprint for speed, mouse to look, **scroll to zoom**), then press **Enter** to save the view into the camera or **Backspace** to cancel. You're dropped back to your own view, the thumbnail refreshes, and the panel updates. There are Save/Cancel buttons in the panel too.
 - **save your current view** into it (fly the drone with K, find the angle, click)
 - delete it
 

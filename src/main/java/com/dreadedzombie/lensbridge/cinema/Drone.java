@@ -24,6 +24,8 @@ public final class Drone implements CameraProgram {
     public static volatile float stickUp;
     public static volatile float stickYaw;
     public static volatile float stickGimbal;
+    /** While System.currentTimeMillis() < this, sticks come from drone_control (AI), not the keyboard. */
+    public static volatile long aiSticksUntil;
 
     public record Waypoint(Vec3 pos, double hold) {
     }
@@ -44,7 +46,7 @@ public final class Drone implements CameraProgram {
     final double radius;
     final double speed;         // deg/s for orbit / topdown spin
     final double seconds;       // for dronie / reveal
-    final float fov;
+    float fov;
     final Shot start;
 
     // state
@@ -282,6 +284,14 @@ public final class Drone implements CameraProgram {
     public void nudge(float dYaw, float dPitch) {
         this.yaw += dYaw;
         this.gimbal = Mth.clamp(this.gimbal + dPitch, -30, 90);
+    }
+
+    public void setFov(float fov) {
+        this.fov = fov;
+    }
+
+    public float fov() {
+        return this.fov;
     }
 
     public Mode mode() {

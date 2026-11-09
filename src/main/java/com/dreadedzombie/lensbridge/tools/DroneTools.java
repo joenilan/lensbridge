@@ -98,6 +98,7 @@ public final class DroneTools {
                         Shot v = currentView();
                         Game.run(() -> UserControls.startPilot(v, a.num("max_speed", 6)));
                     }
+                    Drone.aiSticksUntil = System.currentTimeMillis() + (long) (a.num("seconds", 1) * 1000) + 100;
                     Drone.stickForward = (float) a.num("forward", 0);
                     Drone.stickRight = (float) a.num("right", 0);
                     Drone.stickUp = (float) a.num("up", 0);

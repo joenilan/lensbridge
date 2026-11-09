@@ -30,6 +30,7 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] Capture warm-up after idle (fixes stale first frames)
 - [x] Stealth batches: `glFinish` on skipped presents (fixes repeated/stale frames in long stealth batches)
 - [x] **Camera Manager**: browser panel (M / `/ui`) with thumbnails, groups, enable/disable, field edits, nudges with auto re-render, on-screen preview, save-current-view, delete, shoot enabled; plus the matching AI tools; `/file` serves captures (token, no path escape)
+- [x] **Take control** of a camera from the manager (`tripod_edit` / `tripod_edit_finish`): precise drone-style flying, scroll = FOV, Enter saves / Backspace cancels, auto thumbnail refresh; AI `drone_control` sticks take priority over the keyboard while active
 
 ## 0.3: drone + tripods (done 2026-11-09)
 

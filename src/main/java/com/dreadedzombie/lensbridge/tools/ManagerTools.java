@@ -43,7 +43,7 @@ public final class ManagerTools {
     }
 
     /** Capture thumbnails for the given tripods in one stealth batch (the player's screen doesn't change). */
-    static List<String> thumbs(List<Tripods.Tripod> list) {
+    public static List<String> thumbs(List<Tripods.Tripod> list) {
         List<String> done = new ArrayList<>();
         boolean wasActive = DirectorCamera.active;
         Stealth.begin();
@@ -81,6 +81,10 @@ public final class ManagerTools {
                     out.add("tripods", arr);
                     out.addProperty("camera", DirectorCamera.active ? (DirectorCamera.program != null ? DirectorCamera.program.describe() : "fixed") : "off");
                     out.addProperty("preview", DirectorCamera.preview);
+                    String ed = UserControls.editing();
+                    if (ed != null) {
+                        out.addProperty("editing", ed);
+                    }
                     return Result.text(GSON.toJson(out));
                 }));
 
@@ -158,6 +162,17 @@ public final class ManagerTools {
                     }
                     return Result.text("Refreshed " + thumbs(list).size() + " thumbnails");
                 }));
+
+        s.register(new Tool("tripod_edit", "Take control of a tripod in game: the player flies its camera (WASD/Space/Shift, mouse, "
+                + "scroll = FOV), Enter saves, Backspace cancels - or finish with tripod_edit_finish.",
+                new Schema().req("name", "string", "").build(), a -> {
+                    Game.run(() -> UserControls.startEdit(a.str("name")));
+                    return Result.text("Editing " + a.str("name") + " in game");
+                }));
+
+        s.register(new Tool("tripod_edit_finish", "Finish taking control: save the current view into the tripod, or cancel.",
+                new Schema().prop("save", "boolean", "Default true").build(),
+                a -> Result.text(Game.call(() -> UserControls.finishEdit(a.bool("save", true))))));
 
         s.register(new Tool("tripod_preview", "Show a tripod's view live on the player's screen (or 'off' to return to the player).",
                 new Schema().prop("name", "string", "Tripod name, omit to turn preview off").build(), a -> {

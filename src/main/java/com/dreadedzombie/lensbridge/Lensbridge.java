@@ -36,6 +36,7 @@ public final class Lensbridge {
         NeoForge.EVENT_BUS.addListener(UserControls::onTick);
         NeoForge.EVENT_BUS.addListener(UserControls::onMovementInput);
         NeoForge.EVENT_BUS.addListener(UserControls::onHud);
+        NeoForge.EVENT_BUS.addListener(UserControls::onScroll);
         if (!config.enabled) {
             LOGGER.info("Lensbridge is disabled in config/lensbridge.json");
             return;
