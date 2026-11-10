@@ -4,6 +4,25 @@
 
 **A film studio and AI bridge for Minecraft.** Place cameras, fly a drone, manage shots in your browser, and record true-speed video. You can also let an AI assistant (via MCP) see the game and shoot screenshots, orbits, camera moves, drone footage and multi-angle videos for you: for mod testing, debugging visuals, and promo material.
 
+<p align="center"><a href="https://www.youtube.com/watch?v=lBERlzQyIzo"><img src="docs/images/drone-reveal.gif" width="640" alt="A drone reveal rising over a floating garden at night"></a><br><sub>▶ Watch the behind-the-scenes video: every shot was set up and recorded through Lensbridge</sub></p>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/camera-manager.jpg" alt="The Camera Manager with three cameras and their thumbnails"><br><sub>The Camera Manager in your browser</sub></td>
+<td width="50%"><img src="docs/images/multicam.jpg" alt="Three synced camera angles of moths landing on a sheet"><br><sub>Multi-camera recording, synced</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/drone.jpg" alt="A drone reveal rising over a floating garden at night"><br><sub>Drone shots</sub></td>
+<td><img src="docs/images/rail.jpg" alt="A dolly shot sliding along a moth sheet"><br><sub>Camera moves on a rail</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/props-turntable.jpg" alt="360 degree views of a tripod camera prop and the drone prop"><br><sub>Camera and drone props (only crew cameras see them)</sub></td>
+<td><img src="docs/images/showcase-stage.jpg" alt="A contact sheet of every Mothlight moth, block and item, shot automatically"><br><sub>A Showcase Stage contact sheet, shot automatically</sub></td>
+</tr>
+</table>
+
+<sub>Pictures are from <a href="https://apps.zombie.digital/mothlight">Mothlight</a>, filmed with Lensbridge.</sub>
+
 | I am... | Read |
 |---|---|
 | A **player / modmaker** who wants to use it | **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**: install, hotkeys, Camera Manager, drone, recording, troubleshooting |
