@@ -63,16 +63,19 @@ public final class DirectorCamera {
         return active && (preview || Stealth.active() || !Lensbridge.config().stealthCapture);
     }
 
-    /** Advance live programs every frame (even while not shown, so drones keep flying). */
-    static void onFramePre(net.neoforged.neoforge.client.event.RenderFrameEvent.Pre event) {
-        float pt = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+    /**
+     * Advance live programs every frame (even while not shown, so drones keep flying). Called from MinecraftMixin just
+     * before the camera is placed: since 26.x RenderFrameEvent.Pre fires only after the camera and entities have been
+     * extracted for the frame, so using it would show every shot (and prop) one frame late.
+     */
+    public static void beforeCamera(float pt) {
         if (active && !Policy.camerasAllowed()) {
             UserControls.stopPilot();
             release();
             net.minecraft.client.player.LocalPlayer pl = net.minecraft.client.Minecraft.getInstance().player;
             if (pl != null) {
-                pl.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                        "[Lensbridge] Free cameras aren't allowed for you here - back to your view"), true);
+                pl.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
+                        "[Lensbridge] Free cameras aren't allowed for you here - back to your view"));
             }
         }
         if (active) {
@@ -114,7 +117,7 @@ public final class DirectorCamera {
         return m != null ? m : (System.nanoTime() - programStart) / 1e9;
     }
 
-    /** Called every frame from CameraMixin before the camera is applied. Render thread. */
+    /** Called every frame from beforeCamera, before the camera is applied. Render thread. */
     public static void frame(float partialTick) {
         com.dreadedzombie.lensbridge.cinema.CameraProgram p = program;
         if (p == null || !active) {

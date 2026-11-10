@@ -1,15 +1,14 @@
 {
   "required": true,
   "package": "com.dreadedzombie.lensbridge.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "client": [
     "CameraMixin",
     "DeltaTrackerTimerMixin",
     "DisplayAccessor",
     "EntityRenderDispatcherMixin",
     "ItemDisplayAccessor",
-    "MinecraftMixin",
-    "RenderSystemMixin"
+    "MinecraftMixin"
   ],
   "injectors": {
     "defaultRequire": 1

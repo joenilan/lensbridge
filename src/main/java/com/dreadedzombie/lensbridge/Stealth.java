@@ -3,8 +3,8 @@ package com.dreadedzombie.lensbridge;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Stealth capture: while active, frames are still rendered (and can be grabbed) but are NOT presented to the
- * window - the player's screen simply holds its last normal frame instead of flashing to the camera's view.
+ * Stealth capture: while active, frames are still rendered (and can be grabbed) but are NOT shown in the window -
+ * the player's screen simply holds its last normal frame instead of flashing to the camera's view (see MinecraftMixin).
  * Re-entrant (a counter), so nested captures are fine.
  */
 public final class Stealth {

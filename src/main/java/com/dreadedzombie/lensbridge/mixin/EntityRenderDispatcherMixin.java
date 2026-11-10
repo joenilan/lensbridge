@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class EntityRenderDispatcherMixin {
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private <E extends Entity> void lensbridge$hideProps(E entity, Frustum frustum, double camX, double camY, double camZ,
-                                                         CallbackInfoReturnable<Boolean> cir) {
+                                                         float partialTicks, CallbackInfoReturnable<Boolean> cir) {
         if (Props.hide(entity)) {
             cir.setReturnValue(false);
         }
