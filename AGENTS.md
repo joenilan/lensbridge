@@ -12,7 +12,7 @@ Read **[docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)** first, then use [docs/TOOLS.
 
 ## Working on Lensbridge (changing the code)
 
-- NeoForge 21.11.x / MC 1.21.11, Java 21, client-only (`@Mod(dist = CLIENT)`). Build: `./gradlew build` → `build/libs/`.
+- NeoForge 21.11.x / MC 1.21.11, Java 21. A client mod (`Lensbridge`, `@Mod(dist = CLIENT)`) with an optional server side (`server/LensbridgeServer`: config + permission nodes, sent to clients over an optional channel; must not touch client classes). Build: `./gradlew build` → `build/libs/`.
 - **Map:**
 
   | Package | Contents |
@@ -21,6 +21,7 @@ Read **[docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)** first, then use [docs/TOOLS.
   | `tools/` | Tool groups: `Tools` (core), `CinemaTools`, `DroneTools`, `ManagerTools`, `Rendering` (frame-exact and real-time video) |
   | `cinema/` | `Shot`, `Target`, `CameraPath`, `CameraProgram` (lock/orbit/pan/rail/follow/dolly), `Drone`, `Tripods` |
   | `mixin/` | Camera override (`CameraMixin`), stealth present-skipping (`MinecraftMixin`, `RenderSystemMixin`) |
+  | `server/` | Optional server install: server rules (`LensbridgeServer`), `PolicyPayload`, `ServerRules`; the client applies them in `Policy` |
   | top level | `Capture` (grab, streams, thumbnails, contact sheets), `VideoStream` (raw frames → ffmpeg), `DirectorCamera`, `Stealth`, `UserControls` (hotkeys, drone pilot, take-control, HUD), `Shaders` (optional Iris) |
   | UI | `src/main/resources/assets/lensbridge/ui/index.html` (single file, no build step) |
 
