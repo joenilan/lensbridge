@@ -29,8 +29,17 @@ public final class InputDriver {
             case "inventory" -> o.keyInventory;
             case "swap_offhand" -> o.keySwapOffhand;
             case "pick_block" -> o.keyPickItem;
-            default -> throw new IllegalArgumentException("Unknown key '" + name
-                    + "' (forward, back, left, right, jump, sneak, sprint, use, attack, drop, inventory, swap_offhand, pick_block)");
+            default -> {
+                // any other registered key mapping by its id, e.g. "key.mothlight.glide_drop" (mod hotkeys)
+                for (KeyMapping k : o.keyMappings) {
+                    if (k.getName().equals(name)) {
+                        yield k;
+                    }
+                }
+                throw new IllegalArgumentException("Unknown key '" + name
+                        + "' (forward, back, left, right, jump, sneak, sprint, use, attack, drop, inventory, swap_offhand,"
+                        + " pick_block, or any key mapping id such as key.lensbridge.drone)");
+            }
         };
     }
 
