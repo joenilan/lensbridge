@@ -57,7 +57,7 @@ scene  {"freeze":false} ; camera_release
 ## 4. Staging a scene (fast)
 
 - Write a **datapack** into the world's `datapacks/` folder, then `reload` and run `function <ns>:build`. One command builds hundreds of blocks and entities instantly.
-  - Data pack format for 1.21.11: `pack_format` 94 (`min_format` 94).
+  - Data pack format for 26.3: `pack_format` 121 (`min_format` 121).
   - Functions can't use `/tick` (permission level). Send `tick freeze` as its own `command`.
 - Display mobs: summon with `NoAI:1b,PersistenceRequired:1b,Invulnerable:1b,Silent:1b` and an explicit `Rotation` so they face the camera.
 - **Killing then freezing leaves corpses.** Mobs killed right before `tick freeze` stay mid-death forever: red tint, tipped over, overlapping the new ones. Run your clear step, let ~3 s of normal ticks pass, *then* build and freeze.

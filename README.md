@@ -26,7 +26,7 @@ The rest of this file is the technical overview.
 
 ## Install
 
-1. Put `lensbridge-<version>.jar` in your client's `mods/` folder (NeoForge 21.11.x, MC 1.21.11). It's a client mod: servers don't need it, but a server owner can install it to set the rules (see below).
+1. Put `lensbridge-<version>+mc26.3.jar` in your client's `mods/` folder (NeoForge 26.3.x, MC 26.3, Java 25; the 1.21.11 edition is on the `main` branch). It's a client mod: servers don't need it, but a server owner can install it to set the rules (see below).
 2. Start the game once. That creates `config/lensbridge.json` with a random **token**:
 
 ```json

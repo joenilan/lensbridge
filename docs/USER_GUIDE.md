@@ -13,12 +13,15 @@ This guide is for players. It needs no coding.
 
 ## 1. Install
 
-### Get Minecraft 1.21.11 with NeoForge
+### Get Minecraft 26.3 with NeoForge
+
+This is the 26.3 edition of Lensbridge (there's also one for 1.21.11; get the one that matches your game). NeoForge 26.3 runs on Java 25, which the launchers install for you.
+
 Pick the launcher you use:
-- **Prism Launcher:** Add Instance → Minecraft **1.21.11** → Mod loader **NeoForge** → OK. Right-click the instance → **Folder** → open `mods`.
-- **CurseForge app:** Minecraft → Create Custom Profile → **1.21.11**, **NeoForge** → Create. On the profile, **⋯** → **Open Folder** → `mods`.
-- **Modrinth App:** **+** → **1.21.11**, **NeoForge** → Create. Instance → **⋯** → **Open folder** → `mods`.
-- **Official launcher:** run the NeoForge 1.21.11 installer from neoforged.net → **Install client**, start the **neoforge** profile once, then open `.minecraft/mods` (`%APPDATA%\.minecraft\mods` on Windows, `~/Library/Application Support/minecraft/mods` on macOS, `~/.minecraft/mods` on Linux).
+- **Prism Launcher:** Add Instance → Minecraft **26.3** → Mod loader **NeoForge** → OK. Right-click the instance → **Folder** → open `mods`.
+- **CurseForge app:** Minecraft → Create Custom Profile → **26.3**, **NeoForge** → Create. On the profile, **⋯** → **Open Folder** → `mods`.
+- **Modrinth App:** **+** → **26.3**, **NeoForge** → Create. Instance → **⋯** → **Open folder** → `mods`.
+- **Official launcher:** run the NeoForge 26.3 installer from neoforged.net → **Install client**, start the **neoforge** profile once, then open `.minecraft/mods` (`%APPDATA%\.minecraft\mods` on Windows, `~/Library/Application Support/minecraft/mods` on macOS, `~/.minecraft/mods` on Linux).
 
 ### Add Lensbridge
 - Put `lensbridge-<version>.jar` in that `mods` folder (don't unzip it).
