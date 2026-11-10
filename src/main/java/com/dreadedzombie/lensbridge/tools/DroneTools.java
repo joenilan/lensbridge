@@ -157,11 +157,22 @@ public final class DroneTools {
             return Result.text(sb.isEmpty() ? "No tripods" : sb.toString());
         }));
 
-        s.register(new Tool("tripod_remove", "Remove a tripod (or all).",
-                new Schema().prop("name", "string", "").prop("all", "boolean", "").build(), a -> {
+        s.register(new Tool("tripod_remove", "Remove a tripod, a whole group (name prefix before the first _ ), or all.",
+                new Schema().prop("name", "string", "").prop("group", "string", "e.g. 'sheet' removes sheet_wide, sheet_close...")
+                        .prop("all", "boolean", "").build(), a -> {
                     if (a.bool("all", false)) {
                         Tripods.clear();
                         return Result.text("All tripods removed");
+                    }
+                    if (a.has("group")) {
+                        String g = a.str("group");
+                        int n = 0;
+                        for (Tripods.Tripod t : new ArrayList<>(Tripods.all().values())) {
+                            if (t.group().equals(g) && Tripods.remove(t.name())) {
+                                n++;
+                            }
+                        }
+                        return Result.text("Removed " + n + " tripod(s) in group " + g);
                     }
                     return Result.text(Tripods.remove(a.str("name")) ? "removed" : "no such tripod");
                 }));

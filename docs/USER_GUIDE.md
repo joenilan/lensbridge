@@ -70,6 +70,8 @@ A web page on your own computer (`http://127.0.0.1:25599/ui`) where you can see 
 - **Save my view here**: put the camera exactly where your view is right now
 - **✕**: delete the camera
 
+**Delete group** (at the top, once a group is selected) removes every camera in that group in one go.
+
 **At the top of the page:**
 - **Group buttons:** cameras whose names start the same way (`hero_1`, `hero_2`...) form a group. Click a group to show only those, and use *Enable group* / *Disable group*.
 - **Refresh thumbnails:** re-take all thumbnails in view.

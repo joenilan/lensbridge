@@ -18,11 +18,12 @@ You are driving a **live Minecraft client** that a person may be playing or watc
 1. **Never use the player's own view as your camera.** Don't `look`, `hold_keys` or walk the player to frame a shot. Use the **director camera** (`camera_look_at`), **tripods**, the **drone** or **camera moves**. They're detached from the player and, with stealth capture, invisible on the player's screen.
    - You *may* move the player near a location (e.g. `command tp`) only so its chunks load: cameras only see what's loaded around the player. Ask first if the person is playing.
    - Use the player as a *subject* (e.g. drone follow) only when asked.
-2. **Don't leave the player stuck.** If you turn on `camera_preview`, `tripod_preview` or `tripod_edit`, finish with `exit_camera`. Always `camera_release` when your session ends.
-3. **Never build a scene block by block** with hundreds of `command` calls; it's slow and the person hates it. Use one `fill`, a **structure**, or a **datapack function** run by a single `/function` call (see §4).
-4. **Freeze before staging** (`scene {"freeze":true}`) so nothing hatches, grows, wanders or despawns mid-shoot. Unfreeze when done.
-5. **Verify with your eyes and say what you actually saw.** Open the saved images; don't assume a shot worked. Report problems honestly, including your own staging mistakes.
-6. **Show results to the person.** Put the image and video file paths in your reply (the host can embed them). Videos are the point when they ask for video.
+2. **Clean up after yourself.** Remove cameras you placed for a job (`tripod_remove {"group":"tmp"}` removes a whole name group), `stage_clear` stages, `props {"enabled":false}`.
+3. **Don't leave the player stuck.** If you turn on `camera_preview`, `tripod_preview` or `tripod_edit`, finish with `exit_camera`. Always `camera_release` when your session ends.
+4. **Never build a scene block by block** with hundreds of `command` calls; it's slow and the person hates it. Use one `fill`, a **structure**, or a **datapack function** run by a single `/function` call (see §4).
+5. **Freeze before staging** (`scene {"freeze":true}`) so nothing hatches, grows, wanders or despawns mid-shoot. Unfreeze when done.
+6. **Verify with your eyes and say what you actually saw.** Open the saved images; don't assume a shot worked. Report problems honestly, including your own staging mistakes.
+7. **Show results to the person.** Put the image and video file paths in your reply (the host can embed them). Videos are the point when they ask for video.
 
 ---
 
@@ -73,7 +74,7 @@ scene {"look":"qa"}
 stage_build {"namespace":"mymod"}                  # mobs, blocks and items from the registries, built in the sky, world frozen
 stage_shoot {}                                     # a still per exhibit + contact_sheet.png + index.md in captures/showcase/mymod/
 stage_shoot {"orbits":true}                        # also a 360 turntable per mob
-stage_clear {}                                     # remove it, unfreeze
+stage_clear {}                                     # remove it, unfreeze (or stage_shoot {"clear":true})
 ```
 
 - Variants that registries can't know about go in `extra`: `{kind:"mob", id:"mymod:dragon", nbt:"Color:2", label:"Blue dragon"}` (nbt without braces). Leave the generic entry out with `exclude`.

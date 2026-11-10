@@ -276,7 +276,8 @@ public final class ShowcaseTools {
                 + "auto-centred from slightly above, blocks in three-quarter view, items face-on - plus a contact sheet and "
                 + "an index.md, in captures/showcase/<namespace>/. Optional 360 turntables of the mobs.",
                 new Schema().prop("orbits", "boolean", "Also render a 4 s turntable (MP4) of every mob").prop("fov", "number",
-                        "Default 45").prop("elevation", "number", "Camera angle above mobs in degrees (default 38; "
+                        "Default 45").prop("clear", "boolean", "Remove the stage afterwards (like stage_clear)")
+                        .prop("elevation", "number", "Camera angle above mobs in degrees (default 38; "
                         + "flat subjects like wings read best around 40-55, upright mobs around 15-25)").build(),
                 a -> {
                     List<Exhibit> list;
@@ -388,6 +389,9 @@ public final class ShowcaseTools {
                         Files.writeString(dir.resolve("index.md"), md.toString());
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
+                    }
+                    if (a.bool("clear", false)) {
+                        com.dreadedzombie.lensbridge.Lensbridge.server().tools().get("stage_clear").handler().apply(new Tool.Args(new JsonObject()));
                     }
                     return Result.text(String.format("Shot %d exhibits%s -> %s (contact_sheet.png, index.md)", shots.size(),
                             orbits.isEmpty() ? "" : " and " + orbits.size() + " turntables", dir)).addImage(sheet, 1280);

@@ -109,6 +109,10 @@ function renderGroups() {
   if (GROUP !== 'all') {
     const on = document.createElement('button'); on.textContent = 'Enable group'; on.onclick = () => setGroup(true); g.appendChild(on);
     const off = document.createElement('button'); off.textContent = 'Disable group'; off.onclick = () => setGroup(false); g.appendChild(off);
+    const del = document.createElement('button'); del.textContent = 'Delete group'; del.onclick = async () => {
+      if (!confirm('Delete all ' + counts[GROUP] + ' cameras in "' + GROUP + '"?')) return;
+      log(await api('tripod_remove', { group: GROUP })); GROUP = 'all'; await load();
+    }; g.appendChild(del);
   }
 }
 const visible = () => TRIPODS.filter(t => GROUP === 'all' || t.group === GROUP);

@@ -464,11 +464,12 @@ Look through a tripod (live).
 
 ### `tripod_remove`
 
-Remove a tripod (or all).
+Remove a tripod, a whole group (name prefix before the first _ ), or all.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
 | `name` | string |  |  |
+| `group` | string |  | e.g. 'sheet' removes sheet_wide, sheet_close... |
 | `all` | boolean |  |  |
 
 ## Capture
