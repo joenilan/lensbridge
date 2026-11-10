@@ -76,7 +76,7 @@ A web page on your own computer (`http://127.0.0.1:25599/ui`) where you can see 
 - **Shoot enabled:** take a full-size picture from every enabled camera, plus one overview sheet.
 - **Back to my view:** if you're looking through a camera, this returns you to your own eyes.
 - **Show cameras in world** (also **Alt+P**): see your cameras as props in the world. Your shots stay clean.
-- **Copy connect command:** copies the command that connects Claude Code (see section 8).
+- **Copy connect command:** copies the command that connects Claude Code (see section 9).
 - **Help:** opens this guide.
 
 ### Taking control of a camera
@@ -120,13 +120,17 @@ While flying, you can press **Alt+R** to record, or **Alt+T** to drop a camera a
 
 Lensbridge can show your cameras as little props: each tripod as a camera on legs, the drone with spinning rotors. They exist only on your computer; servers and other players never see them. Your own shots stay clean: a camera never films the props unless you (or your assistant) make it a "crew" camera for behind-the-scenes footage. Press **Alt+P** (or **Show cameras in world** in the Camera Manager) to see them yourself. With Jade installed, looking at one shows its name (for example *Lensbridge camera: hero_1*).
 
-## 7. Getting out of anything
+## 7. For modmakers: Showcase Stages
+
+Ask your assistant to "make a showcase of my mod". Lensbridge reads your mod's mobs, blocks and items, builds a clean stage for them high in the sky (held still, on a grey backdrop), photographs every one, and saves the pictures, a contact sheet and an index page in `lensbridge/showcase/<your mod>/`. It can also make a 360° turntable of every mob. Needs cheats (or op on a server).
+
+## 8. Getting out of anything
 
 **Press Esc.** In any camera mode (taking control, drone, looking through a camera), Esc takes you back to your own view instead of opening the pause menu. **Backspace** works too, and so does the **Back to my view** button in the Camera Manager.
 
 ---
 
-## 8. Letting an AI assistant help
+## 9. Letting an AI assistant help
 
 Lensbridge can be connected to an AI assistant such as Claude (it speaks "MCP"). The assistant can:
 - take screenshots of the game to check how things look
@@ -162,7 +166,7 @@ The first time it runs, Lensbridge makes a long random password called a **token
 
 Other assistants that support MCP over HTTP: connect to `http://127.0.0.1:25599/mcp` with the header `Authorization: Bearer <token>`. To find the token yourself, open `config/lensbridge.json` in a text editor (Prism: right-click the instance → Folder → `config`) and copy the value after `"token":`, without the quotes.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -177,7 +181,7 @@ Other assistants that support MCP over HTTP: connect to `http://127.0.0.1:25599/
 
 ---
 
-## 10. Config file (`config/lensbridge.json`)
+## 11. Config file (`config/lensbridge.json`)
 
 | Setting | Default | Meaning |
 |---|---|---|

@@ -64,6 +64,22 @@ scene  {"freeze":false} ; camera_release
 
 ---
 
+## 4b. Showcase Stages (a whole mod in two calls)
+
+For "show me everything in my mod" or listing images:
+
+```text
+scene {"look":"qa"}
+stage_build {"namespace":"mymod"}                  # mobs, blocks and items from the registries, built in the sky, world frozen
+stage_shoot {}                                     # a still per exhibit + contact_sheet.png + index.md in captures/showcase/mymod/
+stage_shoot {"orbits":true}                        # also a 360 turntable per mob
+stage_clear {}                                     # remove it, unfreeze
+```
+
+- Variants that registries can't know about go in `extra`: `{kind:"mob", id:"mymod:dragon", nbt:"Color:2", label:"Blue dragon"}` (nbt without braces). Leave the generic entry out with `exclude`.
+- `elevation` (default 38°): flat subjects (wings, rugs) read best at 40-55°, upright mobs at 15-25°.
+- Check the contact sheet, then open single shots for anything that looks off.
+
 ## 5. Framing rules
 
 - **Flat subjects** (wings, banners, items lying down, rugs): shoot from **above at ~45–60°**. Eye-level shots show flat planes edge-on, as thin lines.

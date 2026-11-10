@@ -18,7 +18,7 @@ public final class AutoFrame {
     }
 
     private static final float FOV = 50f;
-    private static final int THRESHOLD = 40;
+    private static final int THRESHOLD = 12;   // low: dark wings on a dark backdrop change pixels only slightly
 
     private AutoFrame() {
     }
@@ -26,6 +26,17 @@ public final class AutoFrame {
     /** Off-thread. Leaves the director camera wherever the last probe put it. */
     public static Result measure(int entityId, Vec3 start, double probeDistance) {
         // nothing may move between the shown/hidden probe shots, so hold the world still while measuring
+        // the entity's shadow vanishes with it, so it would count as part of the model: no shadows while measuring
+        boolean shadows = Game.call(() -> Game.mc().options.entityShadows().get());
+        Game.run(() -> Game.mc().options.entityShadows().set(false));
+        try {
+            return measureFrozen(entityId, start, probeDistance);
+        } finally {
+            Game.run(() -> Game.mc().options.entityShadows().set(shadows));
+        }
+    }
+
+    private static Result measureFrozen(int entityId, Vec3 start, double probeDistance) {
         boolean wasFrozen = com.dreadedzombie.lensbridge.tools.Rendering.worldFrozen();
         if (!wasFrozen) {
             com.dreadedzombie.lensbridge.tools.Rendering.cmd("tick freeze");
@@ -44,24 +55,31 @@ public final class AutoFrame {
         Vec3 c = start;
         double half = 0.5;
         StringBuilder note = new StringBuilder();
+        // second view: from the side (+x) normally; from straight above when asked (on a Showcase Stage the next exhibit
+        // in the row would block a side view, while nothing is ever above an exhibit)
+        Vec3 second = topView ? new Vec3(0.001, 1, 0.001).normalize() : new Vec3(1, 0, 0);
         // two passes: the second probe is aimed at the first estimate, so the model is near the middle of the frame
         for (int pass = 0; pass < 2; pass++) {
-            double[] front = probe(entityId, c, new Vec3(0, 0, 1), probeDistance);  // camera south, looking north: right = +x
-            double[] side = probe(entityId, c, new Vec3(1, 0, 0), probeDistance);   // camera east, looking west: right = -z
-            if (front == null || side == null) {
+            double[] front = probe(entityId, c, new Vec3(0, 0, 1), probeDistance);
+            double[] other = probe(entityId, c, second, probeDistance);
+            if (front == null || other == null) {
                 note.append("auto-centre: model not found in the probe views; using the hitbox centre. ");
                 return new Result(start, half, note.toString());
             }
-            double dx = front[0];
-            double dz = -side[0];
-            double dy = (front[1] + side[1]) / 2;
+            // front gives x and y; the side view gives z and y; the top view gives x and z
+            double dx = topView ? (front[4] + other[4]) / 2 : front[4];
+            double dy = topView ? front[5] : (front[5] + other[5]) / 2;
+            double dz = other[6];
             c = c.add(dx, dy, dz);
-            half = Math.max(Math.max(front[2], side[2]), Math.max(front[3], side[3]));
+            half = Math.max(Math.max(front[2], other[2]), Math.max(front[3], other[3]));
         }
         note.append(String.format(java.util.Locale.ROOT, "auto-centre: model centre %.2f %.2f %.2f, size ~%.2f blocks. ",
                 c.x, c.y, c.z, half * 2));
         return new Result(c, half, note.toString());
     }
+
+    /** Set by callers that want the top-down second probe (see measureInner). */
+    public static volatile boolean topView;
 
     /**
      * One probe view. Returns {right offset, up offset, half width, half height} in blocks at the target's distance,
@@ -115,6 +133,7 @@ public final class AutoFrame {
         int best = 0;
         long bestSize = 0;
         int next = 0;
+        java.util.Map<Integer, Long> sizes = new java.util.HashMap<>();
         java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
         for (int i = 0; i < cnt.length; i++) {
             if (cnt[i] < 2 || label[i] != 0) {
@@ -145,6 +164,7 @@ public final class AutoFrame {
                     }
                 }
             }
+            sizes.put(id, blob);
             if (blob > bestSize) {
                 bestSize = blob;
                 best = id;
@@ -158,7 +178,10 @@ public final class AutoFrame {
         long n = 0;
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                if (mask[y * w + x] && label[(y / cell) * gw + x / cell] == best) {
+                int lb = label[(y / cell) * gw + x / cell];
+                // every substantial piece of the model (a big moth's wings can separate from its body at low-contrast
+                // joins); specks under 5% of the largest piece (stars, particles) still drop out
+                if (mask[y * w + x] && lb != 0 && sizes.getOrDefault(lb, 0L) >= bestSize * 0.05) {
                     cols[x]++;
                     rows[y]++;
                     n++;
@@ -174,8 +197,16 @@ public final class AutoFrame {
         double f = (h / 2.0) / Math.tan(Math.toRadians(FOV / 2));
         double u = (minX + maxX) / 2.0;
         double v = (minY + maxY) / 2.0;
-        return new double[] {(u - w / 2.0) / f * d, (h / 2.0 - v) / f * d, (maxX - minX) / 2.0 / f * d,
-                (maxY - minY) / 2.0 / f * d};
+        double r = (u - w / 2.0) / f * d;
+        double up = (h / 2.0 - v) / f * d;
+        // screen offsets -> world offset, from the probe camera's own axes (works for any probe direction)
+        double yaw = Math.toRadians(yp[0]);
+        double pitch = Math.toRadians(yp[1]);
+        Vec3 fwd = new Vec3(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+        Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+        Vec3 upv = right.cross(fwd);
+        Vec3 world = right.scale(r).add(upv.scale(up));
+        return new double[] {r, up, (maxX - minX) / 2.0 / f * d, (maxY - minY) / 2.0 / f * d, world.x, world.y, world.z};
     }
 
     /**

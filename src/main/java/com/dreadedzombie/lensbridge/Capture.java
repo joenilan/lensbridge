@@ -54,13 +54,8 @@ public final class Capture {
 
     /** Grab the current frame to {@code file} (PNG). Waits {@code settleFrames} frames first. */
     public static Path grab(Path file, int settleFrames) {
-        settleFrames = warm(settleFrames);
-        if (settleFrames > 0) {
-            Game.waitFrames(settleFrames);
-        }
-        CompletableFuture<NativeImage> image = new CompletableFuture<>();
-        Game.run(() -> Screenshot.takeScreenshot(Game.mc().getMainRenderTarget(), image::complete));
-        try (NativeImage img = image.get(10, TimeUnit.SECONDS)) {
+        // same path as grabImage, so saved screenshots get its checks too (director frame drawn, terrain built)
+        try (NativeImage img = grabImage(settleFrames)) {
             Files.createDirectories(file.getParent());
             img.writeToFile(file);
             return file;
@@ -71,6 +66,7 @@ public final class Capture {
 
     /** Grab the current frame as an image (caller must close it). Off-thread. */
     public static NativeImage grabImage(int settleFrames) {
+        boolean cold = System.currentTimeMillis() - lastGrab > 1500;   // first capture after a pause (warm() resets it)
         settleFrames = warm(settleFrames);
         // A capture meant to show the director camera must read a frame that was really drawn from it. Right after a
         // relaunch, a shader reload or with other mods hooking the frame, the last finished frame can still be the
@@ -80,8 +76,9 @@ public final class Capture {
         if (settleFrames > 0) {
             Game.waitFrames(settleFrames);
         }
-        if (wantDirector && settleFrames >= 3) {
-            // first shot of a batch: give terrain that is still building (a teleport, a fresh camera spot) a moment
+        if (wantDirector && cold) {
+            // first shot after a pause: give terrain that is still building (a teleport, a fresh camera spot) a moment.
+            // Not for every capture: in some places (high in the sky) terrain never reports complete.
             Game.waitTerrain(2000);
         }
         if (wantDirector) {

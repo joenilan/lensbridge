@@ -18,10 +18,15 @@ import org.slf4j.Logger;
 @Mod(value = Lensbridge.MODID, dist = Dist.CLIENT)
 public final class Lensbridge {
     public static final String MODID = "lensbridge";
-    public static final String VERSION = "0.3.8";
+    public static final String VERSION = "0.4.0";
     public static final Logger LOGGER = LogUtils.getLogger();
     private static BridgeConfig config;
     private static BridgeServer server;
+
+    /** The running bridge (null until started); lets one tool reuse another. */
+    public static BridgeServer server() {
+        return server;
+    }
 
     public Lensbridge(IEventBus modBus, ModContainer container) {
         config = BridgeConfig.load(FMLPaths.CONFIGDIR.get().resolve("lensbridge.json"));
@@ -60,6 +65,7 @@ public final class Lensbridge {
         com.dreadedzombie.lensbridge.tools.CinemaTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.DroneTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ManagerTools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.ShowcaseTools.registerAll(server);
         try {
             server.start();
         } catch (Exception e) {

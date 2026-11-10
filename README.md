@@ -108,6 +108,10 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 
 Targets everywhere: `{"entity": id}`, `{"nearest": "mothlight:lumen"}`, `{"point": [x,y,z]}` or `{"player": true}`, with an optional `"offset": [dx,dy,dz]`.
 
+### Showcase Stages (for modmakers)
+
+`stage_build {"namespace":"yourmod"}` builds a clean display of every mob, block and item in your mod high in the sky; `stage_shoot` photographs each one (plus a contact sheet, an index page and optional turntables) into `lensbridge/showcase/yourmod/`; `stage_clear` removes it. Variants go in `extra`.
+
 ### Camera Manager (browser panel)
 
 Press **Alt+C** in game (or open `http://127.0.0.1:25599/ui#<token>`). Every camera appears as a card with a thumbnail, grouped by name prefix. On each card you can:

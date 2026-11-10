@@ -57,15 +57,15 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 
 Turn the Mothlight QA stage into a reusable template so any modmaker can make a showcase of their own items, blocks and mobs at any size.
 
-- [ ] `stage_build {namespace, include, exclude, backdrop: gray|black|white|chroma|<block>, layout: rows|grid, spacing, scale}`: reads the mod's registries and builds the whole stage in one go:
+- [x] `stage_build {namespace, include, exclude, extra, backdrop, per_row}` (0.4.0): reads the mod's registries and builds the whole stage in one fast command batch:
   - neutral backdrop walls; world frozen first
   - mobs held still (NoAI) on pedestals; blocks on plinths; items in frames
   - built server-side, never block by block: directly on the integrated server in singleplayer, or via an optional server half of Lensbridge on dedicated servers
-- [ ] Auto tripods sized to each exhibit (bounding box → distance and FOV)
-- [ ] `stage_shoot {look, shaders: on|off|both, orbits}`: one still per exhibit, optional 360° orbits per mob, contact sheets, and an index page (HTML/Markdown) ready for CurseForge/Modrinth
+- [x] Each exhibit framed by measuring its model (auto-centre with a top-down second probe, so neighbours never block it)
+- [x] `stage_shoot {orbits, elevation, fov}`: one still per exhibit, optional 360° orbits per mob, a contact sheet and index.md; `stage_clear`
 - [ ] Any output size (needs offscreen hi-res rendering, see 0.6)
 - [ ] Template file (`.lensbridge-stage.json`) to save, tweak and re-run a stage after asset changes
-- [ ] First real use: Mothlight's stage (its datapack-function stage is the prototype)
+- [x] First real use: Mothlight, 53 exhibits (36 mobs incl. all 32 wild species as `extra` variants) in ~1.5 min
 
 ## 0.5: testing power
 

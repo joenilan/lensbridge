@@ -1,6 +1,6 @@
 # Lensbridge tool reference
 
-*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (59 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
+*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (62 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
 
 ## Observe
 
@@ -630,4 +630,16 @@ Read Lensbridge's bundled docs. Start every session with the agent guide (defaul
 ### `props`
 
 Camera props for behind-the-scenes shots: visible models of the tripods (camera on legs), the drone (spinning rotors) and the current rail. Client-only. Normal shots stay clean: props show only in the player's view if player_view is on, and in captures from 'crew' cameras (e.g. a drone or a tripod named in crew). A camera never sees its own prop.
+
+### `stage_build`
+
+Showcase Stage: build a clean display of a mod's content in one go - mobs held still (NoAI) in rows, blocks on plinths, items in frames, a floor and backdrop walls - high in the sky so nothing gets in the way. Reads the mod's registered entity types, blocks and items. Freezes the world when done. Then call stage_shoot. Needs cheats/op.
+
+### `stage_shoot`
+
+Showcase Stage: frame and shoot every exhibit of the last stage_build - mobs auto-centred from slightly above, blocks in three-quarter view, items face-on - plus a contact sheet and an index.md, in captures/showcase/<namespace>/. Optional 360 turntables of the mobs.
+
+### `stage_clear`
+
+Remove the last Showcase Stage (blocks, mobs, item frames) and unfreeze the world.
 
