@@ -99,7 +99,8 @@ scene  {"freeze":false} ; camera_release
 - Shoot every exhibit up close, open each image, and list **looks right / broken** with evidence.
 - Contact sheets are small. Open the full-size file before calling something fine.
 - Known traps:
-  - **Stale frames:** fixed in 0.3.1+ (warm-up after idle, `glFinish` in stealth batches). If consecutive shots look identical when they shouldn't, compare image hashes and re-shoot.
+  - **Stale frames:** fixed in 0.3.1+ (warm-up after idle, `glFinish` in stealth batches). Since 0.3.7 a capture also waits until a frame was really drawn from your camera, so a shot can't come back as the player's own view. If consecutive shots look identical when they shouldn't, compare image hashes and re-shoot.
+  - **Shader switches** rebuild all terrain; `scene` now waits for that before returning. Shots taken right after a relaunch or teleport may still need a second try.
   - **Wrong colors / red tint** on mobs means dying entities (see §4).
   - **Empty shots** of blocks that "should be there" mean they hatched, despawned or were never placed. Check with `command execute if block ...`.
   - **Cropped big subjects** means the distance formula is too small for that size.

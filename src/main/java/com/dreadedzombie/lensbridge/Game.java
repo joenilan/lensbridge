@@ -45,6 +45,55 @@ public final class Game {
     }
 
     /** Block (off-thread) until {@code n} more frames have been rendered. */
+    /** Wait (off-thread) until the terrain around the camera has been rebuilt, up to {@code maxMs}. Returns a note. */
+    public static String waitTerrain(long maxMs) {
+        return waitTerrain(0, maxMs);
+    }
+
+    /**
+     * Wait (off-thread) until the terrain is fully built: at least {@code minMs}, then three complete checks in a row,
+     * up to {@code maxMs}. Uses Sodium's own state when Sodium is installed (it replaces vanilla's chunk renderer).
+     */
+    public static String waitTerrain(long minMs, long maxMs) {
+        long t0 = System.currentTimeMillis();
+        int ok = 0;
+        while (System.currentTimeMillis() - t0 < maxMs) {
+            boolean done = Boolean.TRUE.equals(call(Game::terrainComplete));
+            ok = done ? ok + 1 : 0;
+            if (ok >= 3 && System.currentTimeMillis() - t0 >= minMs) {
+                return String.format(java.util.Locale.ROOT, "terrain ready (%.1fs)", (System.currentTimeMillis() - t0) / 1000.0);
+            }
+            waitFrames(2);
+        }
+        return "terrain still building after " + maxMs / 1000 + "s";
+    }
+
+    private static java.lang.reflect.Method sodiumComplete;
+    private static Object sodiumLookup;
+
+    /** Render thread. */
+    private static boolean terrainComplete() {
+        if (mc().level == null) {
+            return false;
+        }
+        try {
+            if (sodiumLookup == null) {
+                Class<?> c = Class.forName("net.caffeinemc.mods.sodium.client.render.SodiumWorldRenderer");
+                sodiumLookup = c.getMethod("instanceNullable");
+                sodiumComplete = c.getMethod("isTerrainRenderComplete");
+            }
+            if (sodiumLookup instanceof java.lang.reflect.Method m) {
+                Object r = m.invoke(null);
+                if (r != null) {
+                    return (boolean) sodiumComplete.invoke(r);
+                }
+            }
+        } catch (ReflectiveOperationException | LinkageError e) {
+            sodiumLookup = Boolean.FALSE;   // no Sodium: use vanilla
+        }
+        return mc().levelRenderer.hasRenderedAllSections();
+    }
+
     public static void waitFrames(int n) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         synchronized (FRAME_WAITS) {
@@ -67,6 +116,7 @@ public final class Game {
     }
 
     static void onFrame(RenderFrameEvent.Post event) {
+        DirectorCamera.frameDone();
         synchronized (FRAME_WAITS) {
             frames++;
             for (Iterator<FrameWait> it = FRAME_WAITS.iterator(); it.hasNext(); ) {

@@ -72,8 +72,28 @@ public final class Capture {
     /** Grab the current frame as an image (caller must close it). Off-thread. */
     public static NativeImage grabImage(int settleFrames) {
         settleFrames = warm(settleFrames);
+        // A capture meant to show the director camera must read a frame that was really drawn from it. Right after a
+        // relaunch, a shader reload or with other mods hooking the frame, the last finished frame can still be the
+        // player's own view (HUD and all), so wait until enough director frames have completed.
+        boolean wantDirector = DirectorCamera.shown();
+        long start = DirectorCamera.directorFrames;
         if (settleFrames > 0) {
             Game.waitFrames(settleFrames);
+        }
+        if (wantDirector && settleFrames >= 3) {
+            // first shot of a batch: give terrain that is still building (a teleport, a fresh camera spot) a moment
+            Game.waitTerrain(2000);
+        }
+        if (wantDirector) {
+            long need = start + Math.max(1, Math.min(2, settleFrames));
+            int extra = 0;
+            while (!(DirectorCamera.lastFrameDirector && DirectorCamera.directorFrames >= need) && extra < 240) {
+                Game.waitFrames(1);
+                extra++;
+            }
+            if (extra >= 240) {
+                Lensbridge.LOGGER.warn("Capture: no frame was drawn from the director camera; the image may show the player's view");
+            }
         }
         CompletableFuture<NativeImage> image = new CompletableFuture<>();
         Game.run(() -> Screenshot.takeScreenshot(Game.mc().getMainRenderTarget(), image::complete));

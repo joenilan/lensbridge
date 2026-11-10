@@ -321,6 +321,11 @@ public final class Tools {
                         Game.run(() -> player().connection.sendCommand(c));
                         Game.sleep(150);
                     }
+                    if (extra.indexOf("shaders O") >= 0) {
+                        // switching shaders rebuilds all terrain; shots taken before it finishes are foggy and half-empty
+                        Game.waitFrames(5);
+                        extra.append(Game.waitTerrain(1500, 15000)).append("; ");
+                    }
                     return Result.text(extra + "Sent: " + String.join(" ; ", cmds) + " (see chat_log)");
                 }));
 

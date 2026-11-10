@@ -27,6 +27,22 @@ public final class DirectorCamera {
      */
     public static volatile String source = "director";
 
+    /** Set by CameraMixin when this frame's camera came from the director (render thread). */
+    public static volatile boolean appliedThisFrame;
+    /** Whether the most recently completed frame was drawn from the director camera, and how many such frames so far. */
+    public static volatile boolean lastFrameDirector;
+    public static volatile long directorFrames;
+
+    /** End of every frame (from Game.onFrame): record whether it was a director frame. */
+    static void frameDone() {
+        boolean d = appliedThisFrame;
+        appliedThisFrame = false;
+        lastFrameDirector = d;
+        if (d) {
+            directorFrames++;
+        }
+    }
+
     public static void set(Vec3 p, float y, float pi, float r, float f) {
         source = "director";
         program = null;

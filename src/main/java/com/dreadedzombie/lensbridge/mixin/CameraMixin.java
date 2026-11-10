@@ -27,6 +27,7 @@ public abstract class CameraMixin {
         if (DirectorCamera.shown()) {
             this.setRotation(DirectorCamera.yaw, DirectorCamera.pitch, DirectorCamera.roll);
             this.setPosition(DirectorCamera.pos);
+            DirectorCamera.appliedThisFrame = true;
         }
     }
 
