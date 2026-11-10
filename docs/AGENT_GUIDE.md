@@ -24,6 +24,7 @@ You are driving a **live Minecraft client** that a person may be playing or watc
 5. **Freeze before staging** (`scene {"freeze":true}`) so nothing hatches, grows, wanders or despawns mid-shoot. Unfreeze when done.
 6. **Verify with your eyes and say what you actually saw.** Open the saved images; don't assume a shot worked. Report problems honestly, including your own staging mistakes.
 7. **Show results to the person.** Put the image and video file paths in your reply (the host can embed them). Videos are the point when they ask for video.
+8. **Respect server rules.** On a server, free cameras and tools that act as the player (`look`, `hold_keys`, `press`, `hotbar`, `chat`, `command`, `screen_click`...) may be refused: the error says why. Don't try to work around it; tell the person (an operator or the server owner can allow it; see the user guide, "Playing on servers"). Singleplayer is unrestricted.
 
 ---
 

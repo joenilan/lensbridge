@@ -13,12 +13,12 @@ import org.slf4j.Logger;
 
 /**
  * Lensbridge: a local bridge that lets AI assistants and scripts see and drive the Minecraft client
- * (MCP over HTTP on 127.0.0.1, token-protected). Client-only.
+ * (MCP over HTTP on 127.0.0.1, token-protected). Client side; the optional server side is LensbridgeServer.
  */
 @Mod(value = Lensbridge.MODID, dist = Dist.CLIENT)
 public final class Lensbridge {
     public static final String MODID = "lensbridge";
-    public static final String VERSION = "0.4.1";
+    public static final String VERSION = "0.5.0";
     public static final Logger LOGGER = LogUtils.getLogger();
     private static BridgeConfig config;
     private static BridgeServer server;
@@ -43,6 +43,9 @@ public final class Lensbridge {
         NeoForge.EVENT_BUS.addListener(UserControls::onHud);
         NeoForge.EVENT_BUS.addListener(UserControls::onScroll);
         NeoForge.EVENT_BUS.addListener(UserControls::onScreenOpening);
+        // a new server sends its own rules (or none): forget the last one's
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) ->
+                com.dreadedzombie.lensbridge.server.ServerRules.clear());
         if (!config.enabled) {
             LOGGER.info("Lensbridge is disabled in config/lensbridge.json");
             return;

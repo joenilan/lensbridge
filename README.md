@@ -24,7 +24,7 @@ The rest of this file is the technical overview.
 
 ## Install
 
-1. Put `lensbridge-<version>.jar` in your client's `mods/` folder (NeoForge 21.11.x, MC 1.21.11). It's client-only, so the server doesn't need it.
+1. Put `lensbridge-<version>.jar` in your client's `mods/` folder (NeoForge 21.11.x, MC 1.21.11). It's a client mod: servers don't need it, but a server owner can install it to set the rules (see below).
 2. Start the game once. That creates `config/lensbridge.json` with a random **token**:
 
 ```json
@@ -193,11 +193,12 @@ camera_release {}
 
 ---
 
-## Limits (0.3)
+## Limits
 
 - The director camera only shows chunks the player has loaded. For far shots, move the player too (spectator + `/tp`).
 - The capture resolution is the window size. Use `window_size` for 1080p, 1440p or 4K-wide windows.
 - `command`, `scene` and other world changes need op on the server.
+- **Multiplayer manners:** on a server, free cameras (they see through walls) need operator status or spectator mode, and tools that act as the player (`look`, `hold_keys`, `press`, `hotbar`, `chat`, `command`, `screen_*`) need operator status. Singleplayer is unrestricted. A server that installs Lensbridge sets its own rules in `config/lensbridge-server.toml` (`freeCameras`, `aiControl`: OPS / EVERYONE / NOBODY) and permission mods can use the nodes `lensbridge.free_cameras` and `lensbridge.ai_control`. See the user guide, "Playing on servers".
 - If the game window is minimised, nothing renders and captures time out.
 
 See [ROADMAP.md](ROADMAP.md) for what's next.

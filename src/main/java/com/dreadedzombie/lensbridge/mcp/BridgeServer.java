@@ -274,8 +274,15 @@ public final class BridgeServer {
         }
     }
 
+    /** Tools that act as the player: a bot, as far as a server is concerned (see Policy). */
+    private static final java.util.Set<String> CONTROL = java.util.Set.of("command", "chat", "look", "hold_keys", "press",
+            "hotbar", "screen_click", "screen_scroll", "close_screen");
+
     private static Tool.Result call(Tool tool, JsonObject args) {
         try {
+            if (CONTROL.contains(tool.name())) {
+                com.dreadedzombie.lensbridge.Policy.requireControl(tool.name());
+            }
             return tool.handler().apply(new Tool.Args(args));
         } catch (RuntimeException e) {
             Lensbridge.LOGGER.debug("Lensbridge tool {} failed", tool.name(), e);

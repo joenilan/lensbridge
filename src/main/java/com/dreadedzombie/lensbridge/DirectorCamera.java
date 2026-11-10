@@ -44,6 +44,7 @@ public final class DirectorCamera {
     }
 
     public static void set(Vec3 p, float y, float pi, float r, float f) {
+        Policy.requireCameras();
         source = "director";
         program = null;
         pos = p;
@@ -65,6 +66,15 @@ public final class DirectorCamera {
     /** Advance live programs every frame (even while not shown, so drones keep flying). */
     static void onFramePre(net.neoforged.neoforge.client.event.RenderFrameEvent.Pre event) {
         float pt = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        if (active && !Policy.camerasAllowed()) {
+            UserControls.stopPilot();
+            release();
+            net.minecraft.client.player.LocalPlayer pl = net.minecraft.client.Minecraft.getInstance().player;
+            if (pl != null) {
+                pl.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        "[Lensbridge] Free cameras aren't allowed for you here - back to your view"), true);
+            }
+        }
         if (active) {
             frame(pt);
         }
@@ -89,6 +99,7 @@ public final class DirectorCamera {
     public static volatile boolean programFinished;
 
     public static void play(com.dreadedzombie.lensbridge.cinema.CameraProgram p) {
+        Policy.requireCameras();
         source = p instanceof com.dreadedzombie.lensbridge.cinema.Drone ? "drone" : "director";
         last = null;
         programFinished = false;

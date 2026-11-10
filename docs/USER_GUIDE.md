@@ -168,7 +168,33 @@ The first time it runs, Lensbridge makes a long random password called a **token
 
 Other assistants that support MCP over HTTP: connect to `http://127.0.0.1:25599/mcp` with the header `Authorization: Bearer <token>`. To find the token yourself, open `config/lensbridge.json` in a text editor (Prism: right-click the instance → Folder → `config`) and copy the value after `"token":`, without the quotes.
 
-## 10. Troubleshooting
+## 10. Playing on servers
+
+Lensbridge keeps to a server's rules by default, because two of its features would be unfair in multiplayer:
+
+- **Free cameras** (the drone, looking through your cameras, AI director shots) can see through walls.
+- **Letting an AI act for you** (moving, looking, pressing keys, clicking menus, chatting, running commands) is a bot, as far as most servers are concerned.
+
+| Where you are | Free cameras | AI acting for you |
+|---|---|---|
+| Singleplayer, or hosting a LAN world | Yes | Yes |
+| A server without Lensbridge | If you're an operator, or in spectator mode | If you're an operator |
+| A server with Lensbridge installed | Whatever the server owner set | Whatever the server owner set |
+
+Screenshots of your own view, recording what you see, placing cameras and the Camera Manager work everywhere. If you lose permission while using a camera (say an operator removes your op status), you're put back in your own view.
+
+### For server owners
+
+Put the same Lensbridge `.jar` in the server's `mods` folder. Players without Lensbridge can still join. After the first start, edit `config/lensbridge-server.toml`:
+
+```toml
+freeCameras = "OPS"   # OPS (operators and spectators), EVERYONE or NOBODY
+aiControl = "OPS"     # OPS, EVERYONE or NOBODY
+```
+
+Changes apply within a few seconds, without a restart. With a permission mod such as **LuckPerms** you can also allow or deny it per player or group with the permission nodes `lensbridge.free_cameras` and `lensbridge.ai_control`. Commands an AI runs still need their normal permissions either way.
+
+## 11. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -183,7 +209,7 @@ Other assistants that support MCP over HTTP: connect to `http://127.0.0.1:25599/
 
 ---
 
-## 11. Config file (`config/lensbridge.json`)
+## 12. Config file (`config/lensbridge.json`)
 
 | Setting | Default | Meaning |
 |---|---|---|

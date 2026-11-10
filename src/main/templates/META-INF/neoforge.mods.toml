@@ -1,11 +1,13 @@
 modLoader="javafml"
 loaderVersion="[1,)"
 license="${mod_license}"
-issueTrackerURL="https://github.com/joenilan/lensbridge/issues"
 
 [[mods]]
 modId="${mod_id}"
 version="${mod_version}"
+# The game checks this on start and shows "update available" on the Mods button (written by tools/publish_mod.py)
+updateJSONURL="https://apps.zombie.digital/downloads/lensbridge/update.json"
+displayURL="https://apps.zombie.digital/lensbridge"
 displayName="${mod_name}"
 authors="DreadedZombie"
 description='''
@@ -21,11 +23,11 @@ config="${mod_id}.mixins.json"
     type="required"
     versionRange="[${neo_version},)"
     ordering="NONE"
-    side="CLIENT"
+    side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="minecraft"
     type="required"
     versionRange="${minecraft_version_range}"
     ordering="NONE"
-    side="CLIENT"
+    side="BOTH"

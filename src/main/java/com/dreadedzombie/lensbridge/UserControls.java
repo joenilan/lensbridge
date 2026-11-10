@@ -209,8 +209,12 @@ public final class UserControls {
             } else {
                 Shot from = DirectorCamera.active
                         ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
-                startPilot(from, 6);
-                say("Drone up: WASD fly, Space/Shift up/down, Sprint = fast, mouse = yaw + gimbal, Alt+D to land");
+                try {
+                    startPilot(from, 6);
+                    say("Drone up: WASD fly, Space/Shift up/down, Sprint = fast, mouse = yaw + gimbal, Alt+D to land");
+                } catch (IllegalStateException e) {   // not allowed on this server (Policy)
+                    say(e.getMessage());
+                }
             }
         }
         while (TRIPOD.consumeClick()) {
@@ -232,9 +236,14 @@ public final class UserControls {
                 say(list.isEmpty() ? "No tripods yet - press Alt+T to place one" : "Back to your view");
             } else {
                 Tripods.Tripod t = list.get(tripodIndex);
-                viewTripod(t);
-                DirectorCamera.preview = true;
-                say("Tripod " + (tripodIndex + 1) + "/" + list.size() + ": " + t.name());
+                try {
+                    viewTripod(t);
+                    DirectorCamera.preview = true;
+                    say("Tripod " + (tripodIndex + 1) + "/" + list.size() + ": " + t.name());
+                } catch (IllegalStateException e) {   // not allowed on this server (Policy)
+                    tripodIndex = -1;
+                    say(e.getMessage());
+                }
             }
         }
         while (PROPS.consumeClick()) {
