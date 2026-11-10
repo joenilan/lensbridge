@@ -342,9 +342,22 @@ public final class ShowcaseTools {
                         Game.mc().options.hideGui = true;
                         Game.mc().options.entityShadows().set(false);   // floating exhibits don't need a shadow far below
                     });
+                    // every mob on the stage, so each shot can hide the others (see Solo)
+                    java.util.Map<Exhibit, Integer> mobIds = new java.util.HashMap<>();
+                    for (Exhibit e : list) {
+                        if (e.kind().equals("mob")) {
+                            Entity ent = find(e);
+                            if (ent != null) {
+                                mobIds.put(e, ent.getId());
+                            }
+                        }
+                    }
                     Stealth.begin();
                     try {
                         for (Exhibit e : list) {
+                            java.util.Set<Integer> others = new java.util.HashSet<>(mobIds.values());
+                            others.remove(mobIds.get(e));
+                            com.dreadedzombie.lensbridge.cinema.Solo.hide(others);
                             Vec3 aim;
                             Vec3 cam;
                             switch (e.kind()) {
@@ -385,6 +398,7 @@ public final class ShowcaseTools {
                                     .append(e.label()).append("](").append(out.getFileName()).append(")\n\n");
                         }
                     } finally {
+                        com.dreadedzombie.lensbridge.cinema.Solo.clear();
                         Stealth.end();
                         Game.run(() -> {
                             Game.mc().options.hideGui = hud;
@@ -415,10 +429,14 @@ public final class ShowcaseTools {
                             args.addProperty("fov", fov);
                             args.addProperty("name", "showcase_" + stageName + "_" + file);
                             AutoFrame.topView = true;   // the side probe would look through the next exhibit in the row
+                            java.util.Set<Integer> others = new java.util.HashSet<>(mobIds.values());
+                            others.remove(ent.getId());
+                            com.dreadedzombie.lensbridge.cinema.Solo.hide(others);
                             try {
                                 com.dreadedzombie.lensbridge.Lensbridge.server().tools().get("capture_orbit").handler().apply(new Tool.Args(args));
                             } finally {
                                 AutoFrame.topView = false;
+                                com.dreadedzombie.lensbridge.cinema.Solo.clear();
                             }
                             orbits.add("showcase_" + stageName + "_" + file + ".mp4");
                         }
