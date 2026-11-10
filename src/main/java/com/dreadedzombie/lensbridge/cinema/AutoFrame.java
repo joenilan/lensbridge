@@ -90,22 +90,22 @@ public final class AutoFrame {
         float[] yp = DirectorCamera.lookAt(cam, aim);
         DirectorCamera.set(cam, yp[0], yp[1], 0, FOV);
         int[] size = new int[2];
-        boolean gui = Game.call(() -> Game.mc().options.hideGui);
-        Game.run(() -> Game.mc().options.hideGui = true);
+        boolean gui = Game.call(Game::hudHidden);
+        Game.run(() -> Game.setHudHidden(true));
         int[] shown;
         try {
             shown = grabStable(size);
         } finally {
-            Game.run(() -> Game.mc().options.hideGui = gui);
+            Game.run(() -> Game.setHudHidden(gui));
         }
         boolean was = setInvisible(entityId, true);
         int[] hidden;
-        Game.run(() -> Game.mc().options.hideGui = true);
+        Game.run(() -> Game.setHudHidden(true));
         try {
             hidden = grabStable(size);
         } finally {
             setInvisible(entityId, was);
-            Game.run(() -> Game.mc().options.hideGui = gui);
+            Game.run(() -> Game.setHudHidden(gui));
         }
         int w = size[0];
         int h = size[1];

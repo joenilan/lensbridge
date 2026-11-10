@@ -16,7 +16,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ClipContext;
@@ -179,7 +179,7 @@ public final class Props {
     private static List<Display.ItemDisplay> spawn(ClientLevel lvl, String key, List<Pose> poses) {
         List<Display.ItemDisplay> out = new ArrayList<>();
         for (Pose p : poses) {
-            Display.ItemDisplay d = new Display.ItemDisplay(EntityType.ITEM_DISPLAY, lvl);
+            Display.ItemDisplay d = new Display.ItemDisplay(EntityTypes.ITEM_DISPLAY, lvl);
             d.setId(nextId--);
             ItemStack stack = new ItemStack(Items.STICK);
             stack.set(DataComponents.ITEM_MODEL, p.model());

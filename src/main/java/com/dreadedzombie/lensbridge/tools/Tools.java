@@ -204,7 +204,7 @@ public final class Tools {
                 a -> Result.text(Game.call(() -> {
                     var mc = Game.mc();
                     var w = mc.getWindow();
-                    return (mc.screen == null ? "no screen open" : "screen " + mc.screen.getClass().getName())
+                    return (mc.gui.screen() == null ? "no screen open" : "screen " + mc.gui.screen().getClass().getName())
                             + " | window " + w.getWidth() + "x" + w.getHeight() + " | gui scale " + w.getGuiScale();
                 }))));
 
@@ -214,38 +214,38 @@ public final class Tools {
                         .prop("button", "integer", "0 left (default), 1 right").build(),
                 a -> Result.text(Game.call(() -> {
                     var mc = Game.mc();
-                    if (mc.screen == null) {
+                    if (mc.gui.screen() == null) {
                         throw new IllegalStateException("No screen open");
                     }
                     double scale = mc.getWindow().getGuiScale();
                     double gx = a.num("x") / scale;
                     double gy = a.num("y") / scale;
                     var ev = new net.minecraft.client.input.MouseButtonEvent(gx, gy,
-                            new net.minecraft.client.input.MouseButtonInfo(a.i("button", 0), 0));
-                    var screen = mc.screen;
+                            new net.minecraft.client.input.MouseButtonInfo(sdlButton(a.i("button", 0)), 0));
+                    var screen = mc.gui.screen();
                     boolean used = screen.mouseClicked(ev, false);
-                    if (mc.screen == screen) {   // the click may have closed or replaced the screen
+                    if (mc.gui.screen() == screen) {   // the click may have closed or replaced the screen
                         screen.mouseReleased(ev);
                     }
                     return String.format(java.util.Locale.ROOT, "clicked %.0f,%.0f (gui %.1f,%.1f) on %s: %s", a.num("x"), a.num("y"),
-                            gx, gy, mc.screen == null ? "(closed)" : mc.screen.getClass().getSimpleName(), used ? "handled" : "nothing there");
+                            gx, gy, mc.gui.screen() == null ? "(closed)" : mc.gui.screen().getClass().getSimpleName(), used ? "handled" : "nothing there");
                 }))));
 
         s.register(new Tool("screen_scroll", "Scroll the mouse wheel over the open GUI screen at window pixel x,y.",
                 new Schema().req("x", "number", "").req("y", "number", "").prop("amount", "number", "Positive = up (default -1, down)").build(),
                 a -> Result.text(Game.call(() -> {
                     var mc = Game.mc();
-                    if (mc.screen == null) {
+                    if (mc.gui.screen() == null) {
                         throw new IllegalStateException("No screen open");
                     }
                     double scale = mc.getWindow().getGuiScale();
-                    boolean used = mc.screen.mouseScrolled(a.num("x") / scale, a.num("y") / scale, 0, a.num("amount", -1));
+                    boolean used = mc.gui.screen().mouseScrolled(a.num("x") / scale, a.num("y") / scale, 0, a.num("amount", -1));
                     return used ? "scrolled" : "nothing scrolled";
                 }))));
 
         s.register(new Tool("close_screen", "Close any open GUI/screen (inventory, menu, chat...).",
                 new Schema().build(), a -> {
-                    Game.run(() -> mc().setScreen(null));
+                    Game.run(() -> mc().gui.setScreen(null));
                     return Result.text("closed");
                 }));
 
@@ -300,7 +300,7 @@ public final class Tools {
 
         s.register(new Tool("hud", "Show or hide the HUD (like F1).",
                 new Schema().req("visible", "boolean", "true = show").build(), a -> {
-                    Game.run(() -> mc().options.hideGui = !a.bool("visible", true));
+                    Game.run(() -> Game.setHudHidden(!a.bool("visible", true)));
                     return Result.text("HUD " + (a.bool("visible", true) ? "shown" : "hidden"));
                 }));
 
@@ -526,7 +526,7 @@ public final class Tools {
         StringBuilder sb = new StringBuilder();
         sb.append("Lensbridge ").append(Lensbridge.VERSION).append(" | FPS ").append(mc.getFps())
                 .append(" | window ").append(mc.getWindow().getWidth()).append('x').append(mc.getWindow().getHeight()).append('\n');
-        sb.append("Screen: ").append(mc.screen == null ? "none (in game)" : mc.screen.getClass().getSimpleName()).append('\n');
+        sb.append("Screen: ").append(mc.gui.screen() == null ? "none (in game)" : mc.gui.screen().getClass().getSimpleName()).append('\n');
         if (mc.player == null || mc.level == null) {
             return sb.append("Not in a world.").toString();
         }
@@ -540,14 +540,14 @@ public final class Tools {
                 .append(" mode ").append(mc.gameMode != null ? mc.gameMode.getPlayerMode().getName() : "?")
                 .append(" riding ").append(p.getVehicle() == null ? "nothing" : BuiltInRegistries.ENTITY_TYPE.getKey(p.getVehicle().getType()))
                 .append('\n');
-        long day = mc.level.getDayTime() % 24000L;
+        long day = mc.level.getOverworldClockTime() % 24000L;
         sb.append("Time ").append(day).append(" (").append(day >= 13000 && day < 23000 ? "night" : "day").append(")")
                 .append(" weather ").append(mc.level.isThundering() ? "thunder" : mc.level.isRaining() ? "rain" : "clear").append('\n');
         sb.append("Holding ").append(describe(p.getMainHandItem())).append('\n');
         sb.append("Director camera: ").append(DirectorCamera.active ? "ON at " + vec(DirectorCamera.pos)
                         + (DirectorCamera.preview ? " (previewed on screen)" : " (hidden; shown only in captures)") : "off")
                 .append(" | shaders ").append(com.dreadedzombie.lensbridge.Shaders.state())
-                .append(" | HUD ").append(mc.options.hideGui ? "hidden" : "shown").append('\n');
+                .append(" | HUD ").append(Game.hudHidden() ? "hidden" : "shown").append('\n');
         sb.append("Captures: ").append(mc.gameDirectory.toPath().resolve(Lensbridge.config().captureDir).toAbsolutePath());
         return sb.toString();
     }
@@ -592,5 +592,18 @@ public final class Tools {
         }
         sb.append(" id ").append(e.getId());
         return sb.toString();
+    }
+
+    /**
+     * The tool's button numbers are the old GLFW ones (0 left, 1 right, 2 middle); since 26.x the game uses SDL's
+     * (1 left, 2 middle, 3 right), so translate to keep screen_click's meaning.
+     */
+    private static int sdlButton(int button) {
+        return switch (button) {
+            case 0 -> com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT;
+            case 1 -> com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT;
+            case 2 -> com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_MIDDLE;
+            default -> button + 1;
+        };
     }
 }

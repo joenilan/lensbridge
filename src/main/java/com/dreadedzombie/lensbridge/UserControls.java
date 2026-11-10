@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -19,7 +19,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Hands-on camera work for players: fly the drone (K), drop a tripod at your view (Y), cycle through
@@ -30,15 +29,15 @@ public final class UserControls {
     // Alt + key by default: plain letters collide with map/minimap mods (M = map, U/Y = Xaero, J = JourneyMap)
     private static KeyMapping alt(String name, int key) {
         return new KeyMapping(name, net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME,
-                net.neoforged.neoforge.client.settings.KeyModifier.ALT, InputConstants.Type.KEYSYM, key, CATEGORY);
+                net.neoforged.neoforge.client.settings.KeyModifier.ALT, InputConstants.Type.KEYBOARD, key, CATEGORY);
     }
 
-    static final KeyMapping DRONE = alt("key.lensbridge.drone", GLFW.GLFW_KEY_D);
-    static final KeyMapping TRIPOD = alt("key.lensbridge.tripod", GLFW.GLFW_KEY_T);
-    static final KeyMapping CYCLE = alt("key.lensbridge.cycle", GLFW.GLFW_KEY_N);
-    static final KeyMapping RECORD = alt("key.lensbridge.record", GLFW.GLFW_KEY_R);
-    static final KeyMapping MANAGER = alt("key.lensbridge.manager", GLFW.GLFW_KEY_C);
-    static final KeyMapping PROPS = alt("key.lensbridge.props", GLFW.GLFW_KEY_P);
+    static final KeyMapping DRONE = alt("key.lensbridge.drone", InputConstants.KEY_D);
+    static final KeyMapping TRIPOD = alt("key.lensbridge.tripod", InputConstants.KEY_T);
+    static final KeyMapping CYCLE = alt("key.lensbridge.cycle", InputConstants.KEY_N);
+    static final KeyMapping RECORD = alt("key.lensbridge.record", InputConstants.KEY_R);
+    static final KeyMapping MANAGER = alt("key.lensbridge.manager", InputConstants.KEY_C);
+    static final KeyMapping PROPS = alt("key.lensbridge.props", InputConstants.KEY_P);
 
     private static boolean piloting;
     private static float lockYaw;
@@ -77,7 +76,7 @@ public final class UserControls {
     private static void say(String msg) {
         LocalPlayer p = Minecraft.getInstance().player;
         if (p != null) {
-            p.displayClientMessage(Component.literal("[Lensbridge] " + msg), true);
+            p.sendOverlayMessage(Component.literal("[Lensbridge] " + msg));
         }
     }
 
@@ -251,7 +250,7 @@ public final class UserControls {
         }
         while (MANAGER.consumeClick()) {
             BridgeConfig c = Lensbridge.config();
-            net.minecraft.util.Util.getPlatform().openUri("http://" + c.host + ":" + c.port + "/ui#" + c.token);
+            com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create("http://" + c.host + ":" + c.port + "/ui#" + c.token));
             say("Opened the camera manager in your browser");
         }
         while (RECORD.consumeClick()) {
@@ -261,9 +260,10 @@ public final class UserControls {
             } else {
                 String name = "rec_" + Capture.stamp();
                 Recorder.start(name, 30, true, 0, result -> Minecraft.getInstance().execute(() -> {
-                    LocalPlayer pl = Minecraft.getInstance().player;
-                    if (pl != null) {
-                        pl.displayClientMessage(Component.literal("[Lensbridge] Saved video: " + result), false);
+                    if (Minecraft.getInstance().player != null) {
+                        // a client-side chat line (remote = false: not logged as a server message)
+                        Minecraft.getInstance().gui.chatListener().handleSystemMessage(
+                                Component.literal("[Lensbridge] Saved video: " + result), false);
                     }
                 }));
                 say("Recording (HUD hidden) - press Alt+R to stop");
@@ -272,11 +272,11 @@ public final class UserControls {
 
         // editing a tripod: Enter saves, Backspace cancels (edge-triggered); leaving pilot mode (K) cancels
         if (editing != null) {
-            boolean enter = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_ENTER) || InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_KP_ENTER);
-            boolean back = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
-            if (mc.screen == null && enter && !enterWas) {
+            boolean enter = InputConstants.isKeyDown(InputConstants.KEY_RETURN) || InputConstants.isKeyDown(InputConstants.KEY_NUMPADENTER);
+            boolean back = InputConstants.isKeyDown(InputConstants.KEY_BACKSPACE);
+            if (mc.gui.screen() == null && enter && !enterWas) {
                 finishEdit(true);
-            } else if (mc.screen == null && back && !backWas) {
+            } else if (mc.gui.screen() == null && back && !backWas) {
                 finishEdit(false);
             } else if (!piloting()) {
                 editing = null;
@@ -286,14 +286,14 @@ public final class UserControls {
         }
 
         // Backspace also leaves a previewed camera / the drone (Esc is handled in onScreenOpening)
-        if (editing == null && DirectorCamera.active && DirectorCamera.preview && mc.screen == null) {
-            boolean back = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
+        if (editing == null && DirectorCamera.active && DirectorCamera.preview && mc.gui.screen() == null) {
+            boolean back = InputConstants.isKeyDown(InputConstants.KEY_BACKSPACE);
             if (back && !backWas) {
                 exitCameraMode();
             }
             backWas = back;
         } else if (editing == null) {
-            backWas = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
+            backWas = InputConstants.isKeyDown(InputConstants.KEY_BACKSPACE);
         }
 
         // drone pilot: keys -> sticks, mouse -> yaw/gimbal (the player stays put and keeps its rotation)
@@ -347,10 +347,10 @@ public final class UserControls {
 
     static void onHud(RenderGuiEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui || mc.player == null) {
+        if (Game.hudHidden() || mc.player == null) {
             return;
         }
-        GuiGraphics g = event.getGuiGraphics();
+        GuiGraphicsExtractor g = event.getGuiGraphics();
         List<String> lines = new ArrayList<>();
         if (editing != null && DirectorCamera.program instanceof Drone d) {
             lines.add("✋ EDITING " + editing + String.format(Locale.ROOT, "   FOV %.0f", d.fov()));
@@ -371,7 +371,7 @@ public final class UserControls {
         }
         int y = 4;
         for (String line : lines) {
-            g.drawString(mc.font, line, 4, y, 0xFFFFD27A, true);
+            g.text(mc.font, line, 4, y, 0xFFFFD27A, true);
             y += 10;
         }
     }

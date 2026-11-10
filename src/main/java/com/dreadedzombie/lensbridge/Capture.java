@@ -93,7 +93,7 @@ public final class Capture {
             }
         }
         CompletableFuture<NativeImage> image = new CompletableFuture<>();
-        Game.run(() -> Screenshot.takeScreenshot(Game.mc().getMainRenderTarget(), image::complete));
+        Game.run(() -> Screenshot.takeScreenshot(Game.mc().gameRenderer.mainRenderTarget(), image::complete));
         try {
             return image.get(10, TimeUnit.SECONDS);
         } catch (Exception e) {
@@ -103,7 +103,7 @@ public final class Capture {
 
     /** Start a streamed MP4 sized to the current window. */
     public static VideoStream stream(String name, int fps) {
-        int[] size = Game.call(() -> new int[]{Game.mc().getMainRenderTarget().width, Game.mc().getMainRenderTarget().height});
+        int[] size = Game.call(() -> new int[]{Game.mc().gameRenderer.mainRenderTarget().width, Game.mc().gameRenderer.mainRenderTarget().height});
         return new VideoStream(dir("videos").resolve(name + ".mp4"), size[0], size[1], fps);
     }
 
@@ -141,15 +141,15 @@ public final class Capture {
     }
 
     private static Path grabCleanInner(Path file, boolean hideHud, int settleFrames) {
-        boolean before = Game.call(() -> Game.mc().options.hideGui);
+        boolean before = Game.call(Game::hudHidden);
         if (hideHud != before) {
-            Game.run(() -> Game.mc().options.hideGui = hideHud);
+            Game.run(() -> Game.setHudHidden(hideHud));
         }
         try {
             return grab(file, Math.max(settleFrames, hideHud != before ? 2 : 0));
         } finally {
             if (hideHud != before) {
-                Game.run(() -> Game.mc().options.hideGui = before);
+                Game.run(() -> Game.setHudHidden(before));
             }
         }
     }

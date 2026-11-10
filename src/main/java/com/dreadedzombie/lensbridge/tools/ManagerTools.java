@@ -47,8 +47,8 @@ public final class ManagerTools {
         List<String> done = new ArrayList<>();
         boolean wasActive = DirectorCamera.active;
         Stealth.begin();
-        boolean hud = Game.call(() -> Game.mc().options.hideGui);
-        Game.run(() -> Game.mc().options.hideGui = true);
+        boolean hud = Game.call(Game::hudHidden);
+        Game.run(() -> Game.setHudHidden(true));
         try {
             for (Tripods.Tripod t : list) {
                 Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
@@ -58,7 +58,7 @@ public final class ManagerTools {
                 done.add(t.name());
             }
         } finally {
-            Game.run(() -> Game.mc().options.hideGui = hud);
+            Game.run(() -> Game.setHudHidden(hud));
             Stealth.end();
             if (!wasActive) {
                 DirectorCamera.release();

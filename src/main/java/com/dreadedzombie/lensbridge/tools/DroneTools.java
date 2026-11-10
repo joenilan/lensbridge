@@ -196,8 +196,8 @@ public final class DroneTools {
                     com.dreadedzombie.lensbridge.Stealth.begin();
                     try {
                     List<Path> files = new ArrayList<>();
-                    boolean hud = Game.call(() -> Game.mc().options.hideGui);
-                    Game.run(() -> Game.mc().options.hideGui = true);
+                    boolean hud = Game.call(Game::hudHidden);
+                    Game.run(() -> Game.setHudHidden(true));
                     try {
                         for (Tripods.Tripod t : list) {
                             Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
@@ -206,7 +206,7 @@ public final class DroneTools {
                             files.add(Capture.grab(Capture.dir("screenshots").resolve(prefix + "_" + t.name() + ".png"), 3));
                         }
                     } finally {
-                        Game.run(() -> Game.mc().options.hideGui = hud);
+                        Game.run(() -> Game.setHudHidden(hud));
                         DirectorCamera.release();
                     }
                     Path sheet = Capture.contactSheet(files, files.size(), Capture.dir("screenshots").resolve(prefix + "_sheet.png"));
@@ -230,10 +230,10 @@ public final class DroneTools {
                     com.dreadedzombie.lensbridge.Stealth.begin();
                     try {
                     Map<String, com.dreadedzombie.lensbridge.VideoStream> out = new LinkedHashMap<>();
-                    boolean hud = Game.call(() -> Game.mc().options.hideGui);
+                    boolean hud = Game.call(Game::hudHidden);
                     boolean wasFrozen = Rendering.worldFrozen();
                     Game.run(() -> {
-                        Game.mc().options.hideGui = true;
+                        Game.setHudHidden(true);
                         if (!wasFrozen) {
                             Game.mc().player.connection.sendCommand("tick freeze");
                         }
@@ -269,7 +269,7 @@ public final class DroneTools {
                         Rendering.forcedPartial = -1f;
                         out.values().forEach(com.dreadedzombie.lensbridge.VideoStream::close);
                         Game.run(() -> {
-                            Game.mc().options.hideGui = hud;
+                            Game.setHudHidden(hud);
                             if (!wasFrozen) {
                                 Game.mc().player.connection.sendCommand("tick unfreeze");
                             }

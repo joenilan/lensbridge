@@ -26,8 +26,8 @@ import net.neoforged.neoforge.server.permission.nodes.PermissionTypes;
  * assistant act for them (move, look, press keys, click menus, chat, run commands). Without it, clients use their
  * built-in rule: ops and spectators only, anything goes in singleplayer.
  *
- * Rules come from config/serverconfig/lensbridge-server.toml (per world) and can be overridden per player or group
- * with a permission mod (e.g. LuckPerms) through the nodes {@code lensbridge.free_cameras} and
+ * Rules come from config/lensbridge-server.toml (a world can override it in syncedconfig/) and can be overridden per
+ * player or group with a permission mod (e.g. LuckPerms) through the nodes {@code lensbridge.free_cameras} and
  * {@code lensbridge.ai_control}. Players without Lensbridge can still join: the channel is optional.
  */
 @Mod(LensbridgeServer.MODID)
@@ -58,7 +58,9 @@ public final class LensbridgeServer {
     private static final Map<UUID, Integer> SENT = new HashMap<>();
 
     public LensbridgeServer(IEventBus modBus, ModContainer container) {
-        container.registerConfig(ModConfig.Type.SERVER, SPEC);
+        // SYNCED is 26.x's name for the per-world server config; keep the old file name so existing configs and the
+        // docs ("lensbridge-server.toml") still apply (the default would now be "lensbridge-synced.toml")
+        container.registerConfig(ModConfig.Type.SYNCED, SPEC, "lensbridge-server.toml");
         modBus.addListener(LensbridgeServer::registerPayloads);
         NeoForge.EVENT_BUS.addListener((PermissionGatherEvent.Nodes e) -> e.addNodes(CAMERAS_NODE, CONTROL_NODE));
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {

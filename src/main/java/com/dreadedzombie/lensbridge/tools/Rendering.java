@@ -51,8 +51,8 @@ public final class Rendering {
 
     private static Result renderInner(String name, int fps, int frames, IntConsumer setup, String world, boolean hideHud, boolean gif) {
         VideoStream video = Capture.stream(name, fps);   // first: if the encoder can't start, nothing has been changed yet
-        boolean hudBefore = Game.call(() -> Game.mc().options.hideGui);
-        Game.run(() -> Game.mc().options.hideGui = hideHud);
+        boolean hudBefore = Game.call(Game::hudHidden);
+        Game.run(() -> Game.setHudHidden(hideHud));
         String mode = world == null ? "sync" : world.toLowerCase(Locale.ROOT);
         double ticksPerFrame = 20.0 / fps;
         long stepped = 0;
@@ -115,7 +115,7 @@ public final class Rendering {
                 if ((mode.equals("frozen") || mode.equals("step")) && !wasFrozen) {
                     cmd("tick unfreeze"); // leave the world as we found it
                 }
-                Game.run(() -> Game.mc().options.hideGui = hudBefore);
+                Game.run(() -> Game.setHudHidden(hudBefore));
             }
         }
         double took = (System.nanoTime() - started) / 1e9;
@@ -178,8 +178,8 @@ public final class Rendering {
     private static Result recordInner(String name, int fps, double seconds, double timelapseInterval, boolean hideHud, boolean gif,
                                       java.util.function.BooleanSupplier keepGoing) {
         VideoStream video = Capture.stream(name, fps);   // first: if the encoder can't start, nothing has been changed yet
-        boolean hudBefore = Game.call(() -> Game.mc().options.hideGui);
-        Game.run(() -> Game.mc().options.hideGui = hideHud);
+        boolean hudBefore = Game.call(Game::hudHidden);
+        Game.run(() -> Game.setHudHidden(hideHud));
         long t0 = System.nanoTime();
         int written = 0;
         int grabbed = 0;
@@ -221,7 +221,7 @@ public final class Rendering {
             }
         } finally {
             video.close();
-            Game.run(() -> Game.mc().options.hideGui = hudBefore);
+            Game.run(() -> Game.setHudHidden(hudBefore));
         }
         double real = (System.nanoTime() - t0) / 1e9;
         String summary = timelapseInterval > 0

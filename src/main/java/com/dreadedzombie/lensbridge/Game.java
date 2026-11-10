@@ -24,6 +24,18 @@ public final class Game {
         return Minecraft.getInstance();
     }
 
+    /** Whether the HUD is hidden (F1). Client thread. */
+    public static boolean hudHidden() {
+        return mc().gui.hud.isHidden();
+    }
+
+    /** Hide or show the HUD (F1). 26.x only offers a toggle (the old {@code options.hideGui} field is gone). Client thread. */
+    public static void setHudHidden(boolean hidden) {
+        if (mc().gui.hud.isHidden() != hidden) {
+            mc().gui.hud.toggle();
+        }
+    }
+
     /** Run on the client thread and wait for the result (throws on timeout / error). */
     public static <T> T call(Supplier<T> task) {
         if (mc().isSameThread()) {

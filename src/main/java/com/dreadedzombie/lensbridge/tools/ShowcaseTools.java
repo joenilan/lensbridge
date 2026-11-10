@@ -155,7 +155,7 @@ public final class ShowcaseTools {
                             for (Item it : BuiltInRegistries.ITEM) {
                                 Identifier id = BuiltInRegistries.ITEM.getKey(it);
                                 if (id.getNamespace().equals(ns) && !(it instanceof BlockItem) && !exclude.contains(id.toString())) {
-                                    items.add(new Exhibit("item", id.toString(), it.getName().getString(), "", 0, 0, 0, 1, 1));
+                                    items.add(new Exhibit("item", id.toString(), it.getName(it.getDefaultInstance()).getString(), "", 0, 0, 0, 1, 1));
                                 }
                             }
                         }
@@ -336,10 +336,10 @@ public final class ShowcaseTools {
                     List<Path> shots = new ArrayList<>();
                     StringBuilder md = new StringBuilder("# " + stageName + " showcase\n\n");
                     boolean wasActive = DirectorCamera.active;
-                    boolean hud = Game.call(() -> Game.mc().options.hideGui);
+                    boolean hud = Game.call(Game::hudHidden);
                     boolean shadows = Game.call(() -> Game.mc().options.entityShadows().get());
                     Game.run(() -> {
-                        Game.mc().options.hideGui = true;
+                        Game.setHudHidden(true);
                         Game.mc().options.entityShadows().set(false);   // floating exhibits don't need a shadow far below
                     });
                     Stealth.begin();
@@ -387,7 +387,7 @@ public final class ShowcaseTools {
                     } finally {
                         Stealth.end();
                         Game.run(() -> {
-                            Game.mc().options.hideGui = hud;
+                            Game.setHudHidden(hud);
                             Game.mc().options.entityShadows().set(shadows);
                         });
                         if (!wasActive) {
