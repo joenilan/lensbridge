@@ -78,6 +78,11 @@ public final class Tripods {
         return TRIPODS;
     }
 
+    /** A copy for code that iterates while other threads may edit (the render thread drawing props). */
+    public static synchronized java.util.List<Tripod> snapshot() {
+        return new java.util.ArrayList<>(all().values());
+    }
+
     public static synchronized void put(Tripod t) {
         all().put(t.name(), t);
         save();

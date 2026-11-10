@@ -62,7 +62,10 @@ public final class ShowcaseTools {
 
     private static final List<Exhibit> STAGE = new ArrayList<>();
     private static String stageName = "stage";
-    private static AABB stageBox;
+    private static AABB stageBox;            // exactly the blocks the stage occupies (cleared by stage_clear)
+    private static int[] stageForce;         // forceloaded rectangle {x0, z0, x1, z1}, released by stage_clear
+    private static final int FILL_LIMIT = 32768;
+    private static final int FORCELOAD_LIMIT = 256;
 
     private static void cmd(String c) {
         Game.run(() -> Game.mc().player.connection.sendCommand(c));
@@ -101,10 +104,15 @@ public final class ShowcaseTools {
                                 + "nbt:'Species:\"luna\"', label:'Luna moth'}] (nbt without braces)")
                         .prop("backdrop", "string", "gray (default) / black / white / chroma / any block id")
                         .prop("per_row", "integer", "Exhibits per row (default 10)")
-                        .prop("x", "number", "Stage origin (default: above the player)").prop("y", "number", "")
-                        .prop("z", "number", "").build(),
+                        .prop("x", "number", "Stage origin (default: the player's x/z, near the top of the world)")
+                        .prop("y", "number", "").prop("z", "number", "")
+                        .prop("force", "boolean", "Build even where the space isn't empty (it is cleared!) or not loaded")
+                        .build(),
                 a -> {
                     String ns = a.str("namespace").toLowerCase(Locale.ROOT);
+                    if (!ns.matches("[a-z0-9_.-]+") || ns.startsWith(".")) {
+                        throw new IllegalArgumentException("namespace must be a mod id like 'mothlight'");
+                    }
                     List<String> include = new ArrayList<>();
                     if (a.has("include")) {
                         a.arr("include").forEach(e -> include.add(e.getAsString()));
@@ -173,11 +181,14 @@ public final class ShowcaseTools {
                     }
 
                     // ---- layout: rows run along X; each row has its backdrop wall to the north (cameras look north)
-                    Vec3 p = Game.call(() -> Game.mc().player.position());
-                    int ox = (int) Math.floor(a.num("x", p.x));
-                    int oy = (int) Math.floor(a.num("y", Math.min(p.y + 40, 300)));
-                    int oz = (int) Math.floor(a.num("z", p.z));
                     double maxMob = mobs.stream().mapToDouble(e -> Math.max(e.w(), e.h())).max().orElse(1);
+                    int height = (int) Math.ceil(Math.max(6, maxMob * 2 + 4));
+                    Vec3 p = Game.call(() -> Game.mc().player.position());
+                    int top = Game.call(() -> Game.mc().level.getMaxY());
+                    int ox = (int) Math.floor(a.num("x", p.x));
+                    // default: just under the build limit, far above anything people build (and checked below)
+                    int oy = (int) Math.floor(a.num("y", top - height - 2));
+                    int oz = (int) Math.floor(a.num("z", p.z));
                     double spacing = Math.max(3, maxMob * 2 + 1);
                     int rowDepth = (int) Math.ceil(Math.max(9, maxMob * 4 + 5));
                     List<Exhibit> placed = new ArrayList<>();
@@ -219,12 +230,38 @@ public final class ShowcaseTools {
                     int x1 = ox + widest + 8;
                     int z0 = oz - 3;
                     int z1 = z + 2;
-                    int y1 = oy + (int) Math.ceil(Math.max(6, maxMob * 2 + 4));
+                    int y1 = Math.min(oy + height, top);
+                    if ((long) (x1 - ox + 1) * (z1 - z0 + 1) > FILL_LIMIT) {
+                        throw new IllegalArgumentException(String.format("Stage too big (%d x %d blocks per layer, the fill "
+                                + "limit is %d): use exclude/include or a smaller per_row", x1 - ox + 1, z1 - z0 + 1, FILL_LIMIT));
+                    }
+                    int[] force = {ox - 8, z0 - 8, x1 + 8, z1 + 8};
+                    long chunks = (long) ((force[2] >> 4) - (force[0] >> 4) + 1) * ((force[3] >> 4) - (force[1] >> 4) + 1);
+                    if (chunks > FORCELOAD_LIMIT) {
+                        throw new IllegalArgumentException("Stage spans " + chunks + " chunks (forceload limit " + FORCELOAD_LIMIT + ")");
+                    }
+                    // replace any previous stage (so it is never orphaned)
+                    boolean hadStage;
+                    synchronized (STAGE) {
+                        hadStage = stageBox != null;
+                    }
+                    if (hadStage) {
+                        clearStage();
+                    }
+                    // never carve into someone's world: the box must be loaded, empty and free of entities
+                    if (!a.bool("force", false)) {
+                        final int fx0 = ox, fy0 = oy, fz0 = z0, fx1 = x1, fy1 = y1, fz1 = z1;
+                        String problem = Game.call(() -> occupied(fx0, fy0, fz0, fx1, fy1, fz1));
+                        if (problem != null) {
+                            throw new IllegalStateException(String.format("Not building at %d %d %d - %d %d %d: %s. Pick another "
+                                    + "x/y/z (or stand closer so it is loaded), or pass force:true to clear it anyway.",
+                                    ox, oy, z0, x1, y1, z1, problem));
+                        }
+                    }
 
                     build.add("tick unfreeze");
-                    build.add(String.format("forceload add %d %d %d %d", ox - 8, z0 - 8, x1 + 8, z1 + 8));
-                    build.add(String.format("kill @e[type=!player,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]", ox - 2, oy - 1, z0 - 2,
-                            widest + 4, y1 - oy + 3, z1 - z0 + 4));
+                    build.add(String.format("forceload add %d %d %d %d", force[0], force[1], force[2], force[3]));
+                    build.add(killIn(ox, oy, z0, x1, y1, z1));
                     batch(build);
                     Game.sleep(4500);   // let anything killed finish dying (and its poof fade), then freeze before placing, so
                     build.clear();      // timed blocks (eggs, crops, cocoons) and spawned mobs stay exactly as placed
@@ -263,7 +300,8 @@ public final class ShowcaseTools {
                         STAGE.clear();
                         STAGE.addAll(placed);
                         stageName = ns;
-                        stageBox = new AABB(ox - 2, oy - 1, z0 - 2, x1 + 2, y1 + 2, z1 + 2);
+                        stageBox = new AABB(ox, oy, z0, x1, y1, z1);
+                        stageForce = force;
                     }
                     saveStage();
                     long nm = placed.stream().filter(e -> e.kind().equals("mob")).count();
@@ -376,7 +414,12 @@ public final class ShowcaseTools {
                             args.addProperty("world", "step");
                             args.addProperty("fov", fov);
                             args.addProperty("name", "showcase_" + stageName + "_" + file);
-                            com.dreadedzombie.lensbridge.Lensbridge.server().tools().get("capture_orbit").handler().apply(new Tool.Args(args));
+                            AutoFrame.topView = true;   // the side probe would look through the next exhibit in the row
+                            try {
+                                com.dreadedzombie.lensbridge.Lensbridge.server().tools().get("capture_orbit").handler().apply(new Tool.Args(args));
+                            } finally {
+                                AutoFrame.topView = false;
+                            }
                             orbits.add("showcase_" + stageName + "_" + file + ".mp4");
                         }
                     }
@@ -400,27 +443,72 @@ public final class ShowcaseTools {
         s.register(new Tool("stage_clear", "Remove the last Showcase Stage (blocks, mobs, item frames) and unfreeze the world.",
                 new Schema().build(),
                 a -> {
-                    AABB b;
-                    synchronized (STAGE) {
-                        b = stageBox;
-                    }
-                    if (b == null) {
-                        throw new IllegalStateException("No stage to clear");
-                    }
-                    List<String> c = new ArrayList<>();
-                    c.add("tick unfreeze");
-                    c.add(String.format("kill @e[type=!player,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]", (int) b.minX, (int) b.minY,
-                            (int) b.minZ, (int) b.getXsize(), (int) b.getYsize(), (int) b.getZsize()));
-                    for (int y = (int) b.minY; y <= (int) b.maxY; y++) {
-                        c.add(String.format("fill %d %d %d %d %d %d air", (int) b.minX, y, (int) b.minZ, (int) b.maxX, y, (int) b.maxZ));
-                    }
-                    batch(c);
-                    synchronized (STAGE) {
-                        STAGE.clear();
-                        stageBox = null;
-                    }
+                    clearStage();
                     return Result.text("Stage cleared");
                 }));
+    }
+
+    /** Remove the last stage: exactly its box, then release its forceloaded chunks and unfreeze. */
+    private static void clearStage() {
+        AABB b;
+        int[] f;
+        synchronized (STAGE) {
+            b = stageBox;
+            f = stageForce;
+        }
+        if (b == null) {
+            throw new IllegalStateException("No stage to clear");
+        }
+        int x0 = (int) b.minX, y0 = (int) b.minY, z0 = (int) b.minZ, x1 = (int) b.maxX, y1 = (int) b.maxY, z1 = (int) b.maxZ;
+        List<String> c = new ArrayList<>();
+        c.add("tick unfreeze");
+        c.add(killIn(x0, y0, z0, x1, y1, z1));
+        for (int y = y0; y <= y1; y++) {
+            c.add(String.format("fill %d %d %d %d %d %d air", x0, y, z0, x1, y, z1));
+        }
+        if (f != null) {
+            c.add(String.format("forceload remove %d %d %d %d", f[0], f[1], f[2], f[3]));
+        }
+        batch(c);
+        synchronized (STAGE) {
+            STAGE.clear();
+            stageBox = null;
+            stageForce = null;
+        }
+    }
+
+    /** Kill every non-player entity inside the block box (inclusive). */
+    private static String killIn(int x0, int y0, int z0, int x1, int y1, int z1) {
+        return String.format("kill @e[type=!player,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]", x0, y0, z0, x1 - x0, y1 - y0, z1 - z0);
+    }
+
+    /** Why the box can't be used, or null if it is loaded, all air and holds no entities. Render thread. */
+    private static String occupied(int x0, int y0, int z0, int x1, int y1, int z1) {
+        var lvl = Game.mc().level;
+        for (int cx = x0 >> 4; cx <= x1 >> 4; cx++) {
+            for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) {
+                if (!lvl.hasChunk(cx, cz)) {
+                    return "part of it isn't loaded on this client";
+                }
+            }
+        }
+        var pos = new net.minecraft.core.BlockPos.MutableBlockPos();
+        int solid = 0;
+        for (int x = x0; x <= x1; x++) {
+            for (int y = y0; y <= y1; y++) {
+                for (int z = z0; z <= z1; z++) {
+                    if (!lvl.getBlockState(pos.set(x, y, z)).isAir()) {
+                        solid++;
+                    }
+                }
+            }
+        }
+        if (solid > 0) {
+            return solid + " non-air blocks are in the way";
+        }
+        long ents = lvl.getEntities((Entity) null, new AABB(x0, y0, z0, x1 + 1, y1 + 1, z1 + 1),
+                e -> !(e instanceof net.minecraft.world.entity.player.Player) && !com.dreadedzombie.lensbridge.cinema.Props.isProp(e)).size();
+        return ents > 0 ? ents + " entities are in the way" : null;
     }
 
     /** The entity standing in for a mob exhibit (nearest of its type to where it was summoned). Off-thread. */

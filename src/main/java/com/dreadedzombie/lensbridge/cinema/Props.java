@@ -98,7 +98,7 @@ public final class Props {
         }
         Map<String, List<Pose>> want = new HashMap<>();
         if (enabled) {
-            for (Tripods.Tripod t : Tripods.all().values()) {
+            for (Tripods.Tripod t : Tripods.snapshot()) {
                 Shot s = Tripods.shot(t, partialTick);
                 want.put(t.name(), tripod(lvl, s));
             }

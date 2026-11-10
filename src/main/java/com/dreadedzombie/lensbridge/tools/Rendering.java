@@ -50,6 +50,7 @@ public final class Rendering {
     }
 
     private static Result renderInner(String name, int fps, int frames, IntConsumer setup, String world, boolean hideHud, boolean gif) {
+        VideoStream video = Capture.stream(name, fps);   // first: if the encoder can't start, nothing has been changed yet
         boolean hudBefore = Game.call(() -> Game.mc().options.hideGui);
         Game.run(() -> Game.mc().options.hideGui = hideHud);
         String mode = world == null ? "sync" : world.toLowerCase(Locale.ROOT);
@@ -61,7 +62,6 @@ public final class Rendering {
             cmd("tick freeze");
             Game.sleep(150);
         }
-        VideoStream video = Capture.stream(name, fps);
         double avgFrameSeconds = -1;
         float lastRate = 20;
         try {
@@ -177,9 +177,9 @@ public final class Rendering {
 
     private static Result recordInner(String name, int fps, double seconds, double timelapseInterval, boolean hideHud, boolean gif,
                                       java.util.function.BooleanSupplier keepGoing) {
+        VideoStream video = Capture.stream(name, fps);   // first: if the encoder can't start, nothing has been changed yet
         boolean hudBefore = Game.call(() -> Game.mc().options.hideGui);
         Game.run(() -> Game.mc().options.hideGui = hideHud);
-        VideoStream video = Capture.stream(name, fps);
         long t0 = System.nanoTime();
         int written = 0;
         int grabbed = 0;

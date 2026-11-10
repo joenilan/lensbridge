@@ -222,8 +222,11 @@ public final class Tools {
                     double gy = a.num("y") / scale;
                     var ev = new net.minecraft.client.input.MouseButtonEvent(gx, gy,
                             new net.minecraft.client.input.MouseButtonInfo(a.i("button", 0), 0));
-                    boolean used = mc.screen.mouseClicked(ev, false);
-                    mc.screen.mouseReleased(ev);
+                    var screen = mc.screen;
+                    boolean used = screen.mouseClicked(ev, false);
+                    if (mc.screen == screen) {   // the click may have closed or replaced the screen
+                        screen.mouseReleased(ev);
+                    }
                     return String.format(java.util.Locale.ROOT, "clicked %.0f,%.0f (gui %.1f,%.1f) on %s: %s", a.num("x"), a.num("y"),
                             gx, gy, mc.screen == null ? "(closed)" : mc.screen.getClass().getSimpleName(), used ? "handled" : "nothing there");
                 }))));
