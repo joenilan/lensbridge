@@ -198,6 +198,7 @@ public final class ManagerTools {
                 new Schema().prop("enabled", "boolean", "Turn props on/off")
                         .prop("player_view", "boolean", "Show them in the player's own view (setup)")
                         .prop("crew", "array", "Cameras that see the props: 'director', 'drone' or tripod names; [] = none")
+                        .prop("staged_drones", "array", "Parked drone props for staged shots: [[x,y,z,yaw], ...]; [] = none")
                         .build(),
                 a -> {
                     if (a.has("enabled")) {
@@ -209,6 +210,14 @@ public final class ManagerTools {
                     if (a.has("crew")) {
                         com.dreadedzombie.lensbridge.cinema.Props.crew.clear();
                         a.arr("crew").forEach(e -> com.dreadedzombie.lensbridge.cinema.Props.crew.add(e.getAsString()));
+                    }
+                    if (a.has("staged_drones")) {
+                        com.dreadedzombie.lensbridge.cinema.Props.stagedDrones.clear();
+                        for (var el : a.arr("staged_drones")) {
+                            var v = el.getAsJsonArray();
+                            com.dreadedzombie.lensbridge.cinema.Props.stagedDrones.add(new double[] {v.get(0).getAsDouble(),
+                                    v.get(1).getAsDouble(), v.get(2).getAsDouble(), v.size() > 3 ? v.get(3).getAsDouble() : 0});
+                        }
                     }
                     Game.waitFrames(2);
                     return Result.text(Game.call(com.dreadedzombie.lensbridge.cinema.Props::describe));

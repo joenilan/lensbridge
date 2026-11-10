@@ -41,6 +41,8 @@ public final class Props {
     public static volatile boolean enabled;
     public static volatile boolean playerView;
     public static final Set<String> crew = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Parked drone props for staged behind-the-scenes shots: {x, y, z, yaw}. Seen like the real drone's prop. */
+    public static final List<double[]> stagedDrones = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private static final Identifier HEAD = model("tripod_head");
     private static final Identifier LEGS = model("tripod_legs");
@@ -98,6 +100,10 @@ public final class Props {
             if (DirectorCamera.program instanceof Drone && DirectorCamera.active) {
                 want.put("drone", drone(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.roll, lvl.getGameTime() + partialTick));
             }
+            for (int i = 0; i < stagedDrones.size(); i++) {
+                double[] d = stagedDrones.get(i);
+                want.put("staged_drone_" + i, drone(new Vec3(d[0], d[1], d[2]), (float) d[3], 0, lvl.getGameTime() + partialTick));
+            }
             if (DirectorCamera.program instanceof CameraProgram.Rail rail && DirectorCamera.active) {
                 List<Pose> dots = new ArrayList<>();
                 CameraPath path = rail.path();
@@ -118,10 +124,16 @@ public final class Props {
                 }
             }
         }
+        // A display builds its render state in tick(); a frozen world doesn't tick entities, so new or changed props
+        // would never show in frozen staging. Tick them ourselves then (it only refreshes their render state).
+        boolean frozen = lvl.tickRateManager().isFrozen();
         for (Map.Entry<String, List<Pose>> e : want.entrySet()) {
             List<Display.ItemDisplay> ents = live.computeIfAbsent(e.getKey(), k -> spawn(lvl, k, e.getValue()));
             for (int i = 0; i < ents.size(); i++) {
                 place(ents.get(i), e.getValue().get(i));
+                if (frozen) {
+                    ents.get(i).tick();
+                }
             }
         }
     }
