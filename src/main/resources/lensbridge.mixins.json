@@ -8,6 +8,7 @@
     "DisplayAccessor",
     "EntityRenderDispatcherMixin",
     "ItemDisplayAccessor",
+    "KeyMappingAccessor",
     "MinecraftMixin",
     "RenderSystemMixin"
   ],

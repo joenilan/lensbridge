@@ -58,7 +58,13 @@ public final class InputDriver {
     /** One press: counts as a click for use/attack/drop etc. */
     public static void tap(String name) {
         KeyMapping k = key(name);
-        KeyMapping.click(k.getKey());
+        if (name.startsWith("key.")) {
+            // a named mapping (mod hotkey): count the click on that mapping itself, so modifier bindings work too
+            com.dreadedzombie.lensbridge.mixin.KeyMappingAccessor a = (com.dreadedzombie.lensbridge.mixin.KeyMappingAccessor) k;
+            a.lensbridge$setClickCount(a.lensbridge$getClickCount() + 1);
+        } else {
+            KeyMapping.click(k.getKey());
+        }
     }
 
     public static void releaseAll() {
