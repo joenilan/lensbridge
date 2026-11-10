@@ -118,7 +118,7 @@ While flying, you can press **Alt+R** to record, or **Alt+T** to drop a camera a
 
 ## 6. Seeing your cameras in the world
 
-Lensbridge can show your cameras as little props: each tripod as a camera on legs, the drone with spinning rotors. They exist only on your computer; servers and other players never see them. Your own shots stay clean: a camera never films the props unless you (or your assistant) make it a "crew" camera for behind-the-scenes footage. Press **Alt+P** (or **Show cameras in world** in the Camera Manager) to see them yourself.
+Lensbridge can show your cameras as little props: each tripod as a camera on legs, the drone with spinning rotors. They exist only on your computer; servers and other players never see them. Your own shots stay clean: a camera never films the props unless you (or your assistant) make it a "crew" camera for behind-the-scenes footage. Press **Alt+P** (or **Show cameras in world** in the Camera Manager) to see them yourself. With Jade installed, looking at one shows its name (for example *Lensbridge camera: hero_1*).
 
 ## 7. Getting out of anything
 

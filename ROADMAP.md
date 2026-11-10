@@ -51,6 +51,7 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] Docs bundled in the jar: `guide` tool for agents, /docs pages + Help link for players (0.3.4)
 - [x] Install guide per launcher, secret-key explainer, Copy connect command (0.3.5)
 - [x] Reliable first shots (0.3.7): captures wait for a frame actually drawn from the AI camera, and for terrain to finish rebuilding after a shader switch (Sodium-aware)
+- [x] Camera props named after their camera; Jade shows the name with Lensbridge as the mod (0.3.8)
 
 ## 0.4: Showcase Stages for modmakers (owner's headline idea, 2026-11-09)
 

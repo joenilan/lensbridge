@@ -64,6 +64,11 @@ public final class Props {
         return Identifier.fromNamespaceAndPath("lensbridge", name);
     }
 
+    /** Whether an entity is one of our client-only camera props (for overlay mods like Jade to ignore). */
+    public static boolean isProp(Entity e) {
+        return owner.containsKey(e.getId());
+    }
+
     /** Render hook: should this entity be skipped for the frame being drawn? */
     public static boolean hide(Entity e) {
         String own = owner.get(e.getId());
@@ -178,6 +183,11 @@ public final class Props {
             d.setId(nextId--);
             ItemStack stack = new ItemStack(Items.STICK);
             stack.set(DataComponents.ITEM_MODEL, p.model());
+            // a client-only mod can't add items, so the prop is a stick with our model; give it a proper name for any
+            // overlay mod that shows what you are looking at (Jade also gets "Lensbridge" as the mod, see JadeCompat)
+            String label = key.equals("drone") || key.startsWith("staged_drone") ? "Lensbridge drone"
+                    : key.equals("rail") ? "Lensbridge camera rail" : "Lensbridge camera: " + key;
+            stack.set(DataComponents.ITEM_NAME, net.minecraft.network.chat.Component.literal(label));
             ((ItemDisplayAccessor) d).lensbridge$setItemStack(stack);
             ((DisplayAccessor) d).lensbridge$setViewRange(4.0F);
             d.snapTo(p.pos().x, p.pos().y, p.pos().z, p.yaw(), p.pitch());
