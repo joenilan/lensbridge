@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: User guide and wiki
+    url: https://apps.zombie.digital/lensbridge/wiki
+    about: Install help, hotkeys, the Camera Manager, server rules and every tool.

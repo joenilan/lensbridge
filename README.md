@@ -1,5 +1,7 @@
 # Lensbridge
 
+[Download](https://apps.zombie.digital/lensbridge) · [Wiki](https://apps.zombie.digital/lensbridge/wiki) · [Releases](https://github.com/joenilan/lensbridge/releases) · MIT licensed
+
 **A film studio and AI bridge for Minecraft.** Place cameras, fly a drone, manage shots in your browser, and record true-speed video. You can also let an AI assistant (via MCP) see the game and shoot screenshots, orbits, camera moves, drone footage and multi-angle videos for you: for mod testing, debugging visuals, and promo material.
 
 | I am... | Read |

@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in Lensbridge doesn't work as it should
+labels: [bug]
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Lensbridge, Minecraft and NeoForge versions (the Mods screen shows them)
+      placeholder: Lensbridge 0.5.0, Minecraft 1.21.11, NeoForge 21.11.48
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where were you playing?
+      options: [Singleplayer, A server without Lensbridge, A server with Lensbridge installed, LAN]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Steps to reproduce help a lot. If an AI assistant was driving, say which tool calls it made.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log or crash report
+      description: Paste `logs/latest.log` (or the crash report) from your game folder. Don't paste your config/lensbridge.json; it holds your secret key.
+      render: text
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: Especially shaders (Iris), Sodium, or camera/freecam mods.

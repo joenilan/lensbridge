@@ -1,0 +1,11 @@
+name: Idea or request
+description: Suggest a feature or a better way to do something
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Lensbridge to do?
+      description: Tell us the shot or workflow you're after, not just the button you want.
+    validations:
+      required: true
