@@ -49,6 +49,7 @@ Goal: an **in-depth, genuinely useful** bridge for (1) AI-driven mod testing and
 - [x] Camera props for behind-the-scenes shots (`props`): tripod/drone/rail models, client-only, seen only by crew cameras (never their own) and optionally the player
 - [x] Camera Manager switch for props + Alt+P (0.3.3)
 - [x] Docs bundled in the jar: `guide` tool for agents, /docs pages + Help link for players (0.3.4)
+- [x] Install guide per launcher, secret-key explainer, Copy connect command (0.3.5)
 
 ## 0.4: Showcase Stages for modmakers (owner's headline idea, 2026-11-09)
 

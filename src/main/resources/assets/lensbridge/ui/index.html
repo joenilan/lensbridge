@@ -50,7 +50,8 @@
   <button onclick="thumbsVisible()">Refresh thumbnails</button>
   <button class="primary" onclick="shootEnabled()">Shoot enabled</button>
   <button onclick="api('exit_camera',{}).then(log)">Back to my view</button>
-  <a class="btn" href="/docs/user-guide" target="_blank" style="align-self:center;padding:0 6px">Help</a>
+  <button onclick="copyConnect()" title="Copies the command that connects Claude Code to Lensbridge (includes your secret key)">Copy connect command</button>
+  <button onclick="window.open('/docs/user-guide', '_blank')">Help</button>
   <button id="showcams" onclick="toggleCams()" title="Show your cameras as props in your own view (Alt+P). Your shots stay clean.">Show cameras in world</button>
 </header>
 <div id="editbar"><span>✋ Controlling <b id="edname"></b> in game: WASD / Space / Shift to move, Sprint for speed, mouse to look, scroll to zoom.
@@ -64,6 +65,11 @@ const TOKEN = location.hash.slice(1);
 let TRIPODS = [], GROUP = 'all', EDITING = null;
 const $ = s => document.querySelector(s);
 function log(msg) { const l = $('#log'); l.textContent = msg; l.style.display = 'block'; clearTimeout(log.t); log.t = setTimeout(() => l.style.display = 'none', 4000); }
+async function copyConnect() {
+  const cmd = 'claude mcp add --transport http lensbridge ' + location.origin + '/mcp --header "Authorization: Bearer ' + TOKEN + '"';
+  try { await navigator.clipboard.writeText(cmd); log('Copied. Paste it into a terminal and press Enter (Claude Code). Keep it private: it contains your secret key.'); }
+  catch (e) { prompt('Copy this command:', cmd); }
+}
 async function toggleCams() {
   const on = !document.getElementById('showcams').classList.contains('primary');
   const r = await api('props', on ? { enabled: true, player_view: true } : { player_view: false });

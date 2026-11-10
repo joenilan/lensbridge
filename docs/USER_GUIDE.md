@@ -13,14 +13,25 @@ This guide is for players. It needs no coding.
 
 ## 1. Install
 
-1. You need **Minecraft 1.21.11** with **NeoForge**. Most launchers (Prism, CurseForge, Modrinth App) can set this up.
-2. Put `lensbridge-<version>.jar` in your instance's `mods` folder.
-3. Recommended for video: install **ffmpeg**. Windows: `winget install ffmpeg`. macOS: `brew install ffmpeg`. Linux: your package manager. Stills work without it.
-4. Start the game once. Lensbridge creates `config/lensbridge.json`. You don't need to edit it.
+### Get Minecraft 1.21.11 with NeoForge
+Pick the launcher you use:
+- **Prism Launcher:** Add Instance → Minecraft **1.21.11** → Mod loader **NeoForge** → OK. Right-click the instance → **Folder** → open `mods`.
+- **CurseForge app:** Minecraft → Create Custom Profile → **1.21.11**, **NeoForge** → Create. On the profile, **⋯** → **Open Folder** → `mods`.
+- **Modrinth App:** **+** → **1.21.11**, **NeoForge** → Create. Instance → **⋯** → **Open folder** → `mods`.
+- **Official launcher:** run the NeoForge 1.21.11 installer from neoforged.net → **Install client**, start the **neoforge** profile once, then open `.minecraft/mods` (`%APPDATA%\.minecraft\mods` on Windows, `~/Library/Application Support/minecraft/mods` on macOS, `~/.minecraft/mods` on Linux).
 
-Lensbridge only runs on **your** computer (the client). Servers don't need it.
+### Add Lensbridge
+- Put `lensbridge-<version>.jar` in that `mods` folder (don't unzip it).
+- Lensbridge only runs on **your** computer (the client). Servers don't need it, and it works on any server.
 
----
+### Install ffmpeg (for video)
+Stills work without it; videos need it.
+- Windows: `winget install Gyan.FFmpeg` in Terminal
+- macOS: `brew install ffmpeg`
+- Linux: your package manager
+- Restart Minecraft afterwards.
+
+Start the game once. Lensbridge creates `config/lensbridge.json`; you don't need to edit it.
 
 ## 2. Your first five minutes
 
@@ -64,6 +75,9 @@ A web page on your own computer (`http://127.0.0.1:25599/ui`) where you can see 
 - **Refresh thumbnails:** re-take all thumbnails in view.
 - **Shoot enabled:** take a full-size picture from every enabled camera, plus one overview sheet.
 - **Back to my view:** if you're looking through a camera, this returns you to your own eyes.
+- **Show cameras in world** (also **Alt+P**): see your cameras as props in the world. Your shots stay clean.
+- **Copy connect command:** copies the command that connects Claude Code (see section 8).
+- **Help:** opens this guide.
 
 ### Taking control of a camera
 
@@ -132,13 +146,21 @@ Once connected, the assistant reads Lensbridge's own guide by itself (the `guide
 
 The guides are also inside the mod: open the Camera Manager (Alt+C) and click **Help**, or go to `http://127.0.0.1:25599/docs`.
 
-To connect Claude Code:
+### Your secret key (token)
 
-```bash
-claude mcp add --transport http lensbridge http://127.0.0.1:25599/mcp --header "Authorization: Bearer <your token>"
-```
+The first time it runs, Lensbridge makes a long random password called a **token** and saves it in `config/lensbridge.json` in your instance folder. Only programs that have it can use the connection, so another app or web page on your PC can't take over your game. Nothing on the internet can reach the connection at all.
 
----
+- You only need it once, when you connect an assistant.
+- Don't share it (or screenshots of the connect command).
+- To make a new one, close Minecraft and delete `config/lensbridge.json`; a new token is created on the next start. Assistants you connected before will need the new one.
+
+### Connect Claude Code
+
+1. In game, press **Alt+C** to open the Camera Manager.
+2. Click **Copy connect command**.
+3. Paste it into a terminal and press Enter. That's it: start Claude Code and ask for a shot.
+
+Other assistants that support MCP over HTTP: connect to `http://127.0.0.1:25599/mcp` with the header `Authorization: Bearer <token>`. To find the token yourself, open `config/lensbridge.json` in a text editor (Prism: right-click the instance → Folder → `config`) and copy the value after `"token":`, without the quotes.
 
 ## 9. Troubleshooting
 
