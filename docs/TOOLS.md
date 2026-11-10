@@ -1,6 +1,6 @@
 # Lensbridge tool reference
 
-*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (62 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
+*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (65 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
 
 ## Observe
 
@@ -623,6 +623,18 @@ Preview a path in the world: draws the rail with particles (only on this client)
 | `seconds` | number |  | Default 10 |
 
 ## Other
+
+### `screen_info`
+
+The open GUI screen (if any): its class, the GUI scale and the window size, for screen_click.
+
+### `screen_click`
+
+Click inside the open GUI screen (inventory, a mod's book or menu...) at window pixel x,y, the same coordinates as in a screenshot of the game. For testing mod screens.
+
+### `screen_scroll`
+
+Scroll the mouse wheel over the open GUI screen at window pixel x,y.
 
 ### `guide`
 

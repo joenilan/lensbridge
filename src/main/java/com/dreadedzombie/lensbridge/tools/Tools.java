@@ -199,6 +199,47 @@ public final class Tools {
                     return "Holding " + describe(player().getMainHandItem());
                 }))));
 
+        s.register(new Tool("screen_info", "The open GUI screen (if any): its class, the GUI scale and the window size, for screen_click.",
+                new Schema().build(),
+                a -> Result.text(Game.call(() -> {
+                    var mc = Game.mc();
+                    var w = mc.getWindow();
+                    return (mc.screen == null ? "no screen open" : "screen " + mc.screen.getClass().getName())
+                            + " | window " + w.getWidth() + "x" + w.getHeight() + " | gui scale " + w.getGuiScale();
+                }))));
+
+        s.register(new Tool("screen_click", "Click inside the open GUI screen (inventory, a mod's book or menu...) at window "
+                + "pixel x,y, the same coordinates as in a screenshot of the game. For testing mod screens.",
+                new Schema().req("x", "number", "Window pixels from the left").req("y", "number", "Window pixels from the top")
+                        .prop("button", "integer", "0 left (default), 1 right").build(),
+                a -> Result.text(Game.call(() -> {
+                    var mc = Game.mc();
+                    if (mc.screen == null) {
+                        throw new IllegalStateException("No screen open");
+                    }
+                    double scale = mc.getWindow().getGuiScale();
+                    double gx = a.num("x") / scale;
+                    double gy = a.num("y") / scale;
+                    var ev = new net.minecraft.client.input.MouseButtonEvent(gx, gy,
+                            new net.minecraft.client.input.MouseButtonInfo(a.i("button", 0), 0));
+                    boolean used = mc.screen.mouseClicked(ev, false);
+                    mc.screen.mouseReleased(ev);
+                    return String.format(java.util.Locale.ROOT, "clicked %.0f,%.0f (gui %.1f,%.1f) on %s: %s", a.num("x"), a.num("y"),
+                            gx, gy, mc.screen == null ? "(closed)" : mc.screen.getClass().getSimpleName(), used ? "handled" : "nothing there");
+                }))));
+
+        s.register(new Tool("screen_scroll", "Scroll the mouse wheel over the open GUI screen at window pixel x,y.",
+                new Schema().req("x", "number", "").req("y", "number", "").prop("amount", "number", "Positive = up (default -1, down)").build(),
+                a -> Result.text(Game.call(() -> {
+                    var mc = Game.mc();
+                    if (mc.screen == null) {
+                        throw new IllegalStateException("No screen open");
+                    }
+                    double scale = mc.getWindow().getGuiScale();
+                    boolean used = mc.screen.mouseScrolled(a.num("x") / scale, a.num("y") / scale, 0, a.num("amount", -1));
+                    return used ? "scrolled" : "nothing scrolled";
+                }))));
+
         s.register(new Tool("close_screen", "Close any open GUI/screen (inventory, menu, chat...).",
                 new Schema().build(), a -> {
                     Game.run(() -> mc().setScreen(null));
