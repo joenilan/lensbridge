@@ -165,7 +165,7 @@ public final class Tools {
                 }));
 
         s.register(new Tool("hold_keys", "Hold movement/action keys for a number of ticks (20 = 1 s), e.g. "
-                + "{\"keys\":{\"forward\":40,\"jump\":5}}. Keys: forward back left right jump sneak sprint use attack drop.",
+                + "{\"keys\":{\"forward\":40,\"jump\":5}}. Keys: forward back left right jump sneak sprint use attack drop, or any key mapping id (e.g. key.mothlight.glide_drop).",
                 new Schema().req("keys", "object", "Map of key -> ticks to hold (0 releases)")
                         .prop("wait", "boolean", "Block until all keys are released (default true)").build(),
                 a -> {
@@ -183,7 +183,7 @@ public final class Tools {
                     return Result.text("Done. Player at " + Game.call(() -> vec(player().position())));
                 }));
 
-        s.register(new Tool("press", "Tap a key once (a click): use, attack, drop, inventory, swap_offhand, pick_block, jump.",
+        s.register(new Tool("press", "Tap a key once (a click): use, attack, drop, inventory, swap_offhand, pick_block, jump, or any key mapping id (e.g. key.lensbridge.drone).",
                 new Schema().req("key", "string", "Key name").build(),
                 a -> {
                     Game.run(() -> InputDriver.tap(a.str("key")));

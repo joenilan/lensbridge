@@ -80,7 +80,7 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 | | `wait` | ticks / frames / milliseconds |
 | Act | `command` / `chat` | send a command (no `/` needed) or a chat message |
 | | `look` | absolute yaw/pitch, or look at x/y/z |
-| | `hold_keys` | hold keys for N ticks: `forward back left right jump sneak sprint use attack drop` |
+| | `hold_keys` | hold keys for N ticks: `forward back left right jump sneak sprint use attack drop`, or any key mapping id such as a mod hotkey |
 | | `press` | tap a key once (click) |
 | | `hotbar` / `close_screen` / `release_inputs` | pick a slot, close GUIs, release everything |
 | Direct | `camera_set` / `camera_look_at` / `camera_release` | free director camera (absolute or player-relative; roll; FOV) |

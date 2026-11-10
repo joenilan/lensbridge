@@ -96,7 +96,7 @@ Turn the player's head: absolute yaw/pitch, or look at a world position.
 
 ### `hold_keys`
 
-Hold movement/action keys for a number of ticks (20 = 1 s), e.g. {"keys":{"forward":40,"jump":5}}. Keys: forward back left right jump sneak sprint use attack drop.
+Hold movement/action keys for a number of ticks (20 = 1 s), e.g. {"keys":{"forward":40,"jump":5}}. Keys: forward back left right jump sneak sprint use attack drop, or any key mapping id (e.g. key.mothlight.glide_drop).
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
@@ -105,7 +105,7 @@ Hold movement/action keys for a number of ticks (20 = 1 s), e.g. {"keys":{"forwa
 
 ### `press`
 
-Tap a key once (a click): use, attack, drop, inventory, swap_offhand, pick_block, jump.
+Tap a key once (a click): use, attack, drop, inventory, swap_offhand, pick_block, jump, or any key mapping id (e.g. key.lensbridge.drone).
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
