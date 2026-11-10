@@ -124,7 +124,7 @@ Lensbridge can show your cameras as little props: each tripod as a camera on leg
 
 ## 7. For modmakers: Showcase Stages
 
-Ask your assistant to "make a showcase of my mod". Lensbridge reads your mod's mobs, blocks and items, builds a clean stage for them high in the sky (held still, on a grey backdrop), photographs every one, and saves the pictures, a contact sheet and an index page in `lensbridge/showcase/<your mod>/`. It can also make a 360° turntable of every mob. Needs cheats (or op on a server).
+Ask your assistant to "make a showcase of my mod". Lensbridge reads your mod's mobs, blocks and items, builds a clean stage for them high in the sky (held still, on a grey backdrop), photographs every one, and saves the pictures, a contact sheet and an index page in `lensbridge/showcase/<your mod>/`. It can also make a 360° turntable of every mob. Needs cheats (or op on a server). The stage is built just under the sky limit and never on top of anything: if the space isn't empty, it stops and says so. When you're done, ask it to clear the stage; that removes it completely.
 
 ## 8. Getting out of anything
 

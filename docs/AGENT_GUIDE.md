@@ -79,6 +79,7 @@ stage_clear {}                                     # remove it, unfreeze (or sta
 
 - Variants that registries can't know about go in `extra`: `{kind:"mob", id:"mymod:dragon", nbt:"Color:2", label:"Blue dragon"}` (nbt without braces). Leave the generic entry out with `exclude`.
 - `elevation` (default 38°): flat subjects (wings, rugs) read best at 40-55°, upright mobs at 15-25°.
+- The stage goes just under the build limit above the player. It **refuses** to build into blocks, entities or unloaded chunks; pick other `x`/`y`/`z` rather than passing `force:true` (which clears whatever is there). A new `stage_build` replaces the previous stage; `stage_clear` also releases the chunks it forceloaded.
 - Check the contact sheet, then open single shots for anything that looks off.
 
 ## 5. Framing rules
