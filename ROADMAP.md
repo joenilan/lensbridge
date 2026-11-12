@@ -77,6 +77,16 @@ Turn the Mothlight QA stage into a reusable template so any modmaker can make a 
 - [ ] Assertions for scripted tests: `expect` (entity present, block state, chat line) with timeouts → pass/fail report
 - [ ] A second "bot" client profile (offline-mode dev server) so tests don't take over the player's own game
 
+## Next: Agentlink support (branch `agentlink-support`, not released)
+
+- [x] Agentlink installed → Lensbridge registers its tools (bare names kept as aliases, ids `lensbridge.<tool>`), `/ui`,
+      `/docs`, `/file` and its agent instructions with it over InterModComms, and starts no server of its own
+- [x] Agentlink missing → built-in server, unchanged
+- [x] Alt+C opens the Camera Manager on whichever server is live
+- [ ] In-game check with and without Agentlink (owner's go-ahead needed)
+- [ ] Carry to `mc/26.3` (only `UserControls` differs: 26.3 opens the URL with `Blaze3D.openUri`)
+- [ ] Publish Lensbridge events on the bus (`lensbridge.capture_saved`, `lensbridge.recording_started/stopped`)
+
 ## 0.6: promo studio
 
 - [ ] **Hi-res stills:** offscreen render target at any size (4K/8K) without resizing the window; supersampling

@@ -35,15 +35,28 @@ public final class Recorder {
         }
         startedAt = System.currentTimeMillis();
         frameCount = 0;
+        com.google.gson.JsonObject started = new com.google.gson.JsonObject();
+        started.addProperty("name", name);
+        started.addProperty("fps", fps);
+        com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.publish("lensbridge.recording_started", started);
         Thread t = new Thread(() -> {
+            com.google.gson.JsonObject finished = new com.google.gson.JsonObject();
+            finished.addProperty("name", name);
             try {
                 var result = com.dreadedzombie.lensbridge.tools.Rendering.record(name, fps, maxSeconds > 0 ? maxSeconds : 3600,
                         0, hideHud, false, RUNNING::get);
-                done.accept(Capture.dir("videos").resolve(name + ".mp4").toString());
+                String file = Capture.dir("videos").resolve(name + ".mp4").toString();
+                finished.addProperty("ok", true);
+                finished.addProperty("file", file);
+                done.accept(file);
             } catch (RuntimeException e) {
+                finished.addProperty("ok", false);
+                finished.addProperty("error", String.valueOf(e.getMessage()));
                 done.accept("Recording failed: " + e.getMessage());
             } finally {
                 RUNNING.set(false);
+                finished.addProperty("seconds", Math.round((System.currentTimeMillis() - startedAt) / 100.0) / 10.0);
+                com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.publish("lensbridge.recording_finished", finished);
             }
         }, "lensbridge-recorder");
         t.setDaemon(true);

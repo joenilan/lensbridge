@@ -86,6 +86,18 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 
 `POST /api/<tool>` with the arguments as the JSON body. It returns `{"content":[{type:text|image,…}],"isError":false}`. `GET /health` needs no token.
 
+### With Agentlink (optional)
+
+**Agentlink** (not released yet) is a separate bridge mod that any mod can plug tools into (Mothlight, Murmur, ...), so one MCP
+connection drives all of them. **Lensbridge does not need it.** If Agentlink is installed, Lensbridge doesn't start its own
+server; it hands its tools, the Camera Manager and the docs pages to Agentlink instead. Nothing changes for you:
+
+- Same address and token: on its first start Agentlink copies `port` and `token` from `config/lensbridge.json` into
+  `config/agentlink.json`, so your MCP client keeps working. From then on the token lives in `config/agentlink.json`.
+- Same tool names (`status`, `capture_orbit`, ...). On Agentlink they also answer to `lensbridge.<tool>`.
+- Alt+C opens the Camera Manager on Agentlink's address.
+- Extra tools from Agentlink itself: `list_capabilities` (every mod plugged in) and `poll_events`.
+
 ---
 
 ## Tools

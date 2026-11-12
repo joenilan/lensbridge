@@ -53,8 +53,8 @@ public final class BridgeServer {
         this.http.createContext("/health", ex -> send(ex, 200, "{\"ok\":true,\"name\":\"lensbridge\"}"));
         this.http.createContext("/mcp", this::handleMcp);
         this.http.createContext("/api/", this::handleRest);
-        this.http.createContext("/ui", this::handleUi);
-        this.http.createContext("/docs", this::handleDocs);
+        this.http.createContext("/ui", BridgeServer::handleUi);
+        this.http.createContext("/docs", BridgeServer::handleDocs);
         this.http.createContext("/file", this::handleFile);
         this.http.start();
         Lensbridge.LOGGER.info("Lensbridge listening on http://{}:{}/mcp ({} tools)", this.config.host, this.config.port, this.tools.size());
@@ -83,7 +83,7 @@ public final class BridgeServer {
     }
 
     /** /docs (index) and /docs/<name>: the bundled guides, as readable pages. */
-    private void handleDocs(HttpExchange ex) throws IOException {
+    static void handleDocs(HttpExchange ex) throws IOException {
         String path = ex.getRequestURI().getPath();
         String name = path.length() > 6 ? path.substring(6) : "";
         String md = name.isEmpty() ? null : doc(name);
@@ -107,7 +107,7 @@ public final class BridgeServer {
         ex.close();
     }
 
-    private void handleUi(HttpExchange ex) throws IOException {
+    static void handleUi(HttpExchange ex) throws IOException {
         try (var in = BridgeServer.class.getResourceAsStream("/assets/lensbridge/ui/index.html")) {
             byte[] page = in == null ? "missing ui".getBytes(StandardCharsets.UTF_8) : in.readAllBytes();
             ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
@@ -125,6 +125,11 @@ public final class BridgeServer {
             send(ex, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
+        serveFile(ex);
+    }
+
+    /** The /file body, without the token check (Agentlink checks the token before calling it). */
+    static void serveFile(HttpExchange ex) throws IOException {
         String q = ex.getRequestURI().getRawQuery() == null ? "" : ex.getRequestURI().getRawQuery();
         String rel = "";
         for (String part : q.split("&")) {
@@ -278,7 +283,8 @@ public final class BridgeServer {
     private static final java.util.Set<String> CONTROL = java.util.Set.of("command", "chat", "look", "hold_keys", "press",
             "hotbar", "screen_click", "screen_scroll", "close_screen");
 
-    private static Tool.Result call(Tool tool, JsonObject args) {
+    /** Run a tool the way every transport does: server rules first, errors become an error result. */
+    public static Tool.Result call(Tool tool, JsonObject args) {
         try {
             if (CONTROL.contains(tool.name())) {
                 com.dreadedzombie.lensbridge.Policy.requireControl(tool.name());
@@ -331,7 +337,7 @@ public final class BridgeServer {
         ex.close();
     }
 
-    private static final String INSTRUCTIONS = """
+    static final String INSTRUCTIONS = """
             Lensbridge drives a LIVE Minecraft client that a person may be playing. Read the full agent guide first: call the \
             `guide` tool (or guide {"name":"tools"} for the tool reference).
             Rules: (1) Start with `status`. (2) NEVER use the player's own view as your camera - frame with camera_look_at, \
@@ -343,6 +349,8 @@ public final class BridgeServer {
             true by default: record = real time, capture_* render frame-exact with world=sync; timelapse only via \
             timelapse_interval or world=free. (7) Open and look at the saved images before claiming anything; report \
             honestly and give the person the file paths. (8) Finish with exit_camera / camera_release so the player is back \
-            on their own view.""";
+            on their own view. (9) The player can ask you from inside the game with /agent <request>: when they want that, \
+            LISTEN by calling agent_inbox in a loop and answer each request with agent_say (short, in their chat). On a \
+            server that lends them its tools, server_tools / server_call reach it.""";
 
 }

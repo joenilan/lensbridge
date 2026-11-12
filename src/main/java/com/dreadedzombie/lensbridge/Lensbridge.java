@@ -45,7 +45,12 @@ public final class Lensbridge {
         NeoForge.EVENT_BUS.addListener(UserControls::onScreenOpening);
         // a new server sends its own rules (or none): forget the last one's
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) ->
-                com.dreadedzombie.lensbridge.server.ServerRules.clear());
+        {
+            com.dreadedzombie.lensbridge.server.ServerRules.clear();
+            com.dreadedzombie.lensbridge.server.ServerAgent.clear();
+        });
+        NeoForge.EVENT_BUS.addListener(ConnectCommand::register);
+        NeoForge.EVENT_BUS.addListener(AgentInbox::register);
         if (!config.enabled) {
             LOGGER.info("Lensbridge is disabled in config/lensbridge.json");
             return;
@@ -69,11 +74,28 @@ public final class Lensbridge {
         com.dreadedzombie.lensbridge.tools.DroneTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ManagerTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ShowcaseTools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.ServerAgentTools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.ServerAgentTools.registerInbox(server);
+        if (com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.available()) {
+            // Agentlink (the shared bridge mod) is installed: it serves Lensbridge's tools; no second server
+            BridgeServer tools = server;
+            modBus.addListener((net.neoforged.fml.event.lifecycle.InterModEnqueueEvent e) ->
+                    com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.enqueue(tools));
+            LOGGER.info("Lensbridge: Agentlink is installed; handing {} tools to it instead of starting the built-in server",
+                    server.tools().size());
+            return;
+        }
         try {
             server.start();
         } catch (Exception e) {
             LOGGER.error("Lensbridge could not start on {}:{}", config.host, config.port, e);
         }
+    }
+
+    /** The camera manager page, with the token in the fragment: from Agentlink when linked, else the built-in server. */
+    public static String managerUrl() {
+        String linked = com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.pageUrl("/ui");
+        return linked != null ? linked : "http://" + config.host + ":" + config.port + "/ui#" + config.token;
     }
 
     public static BridgeConfig config() {

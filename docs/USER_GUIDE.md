@@ -145,6 +145,8 @@ You see the same cameras in the Camera Manager, and you can take control of any 
 **Privacy and safety:**
 - Lensbridge only listens on your own computer (`127.0.0.1`); nothing on the internet can reach it.
 - Every request needs the secret **token** in `config/lensbridge.json`. Delete that file to get a new token.
+- If you also installed **Agentlink** (a bridge other mods can plug into), Agentlink carries the connection instead and the
+  token is in `config/agentlink.json`. The first time, it copies your Lensbridge token, so nothing needs reconnecting.
 - Screenshots only ever contain the **game's** picture, never your desktop or other windows.
 - The assistant's cameras are invisible to you by default. They render behind the scenes, so your screen doesn't jump around. If you *want* to watch, the assistant can turn on preview.
 
@@ -160,11 +162,25 @@ The first time it runs, Lensbridge makes a long random password called a **token
 - Don't share it (or screenshots of the connect command).
 - To make a new one, close Minecraft and delete `config/lensbridge.json`; a new token is created on the next start. Assistants you connected before will need the new one.
 
-### Connect Claude Code
+### Ask from inside the game: `/agent`
 
-1. In game, press **Alt+C** to open the Camera Manager.
-2. Click **Copy connect command**.
-3. Paste it into a terminal and press Enter. That's it: start Claude Code and ask for a shot.
+Tell your AI "listen for /agent". Then type **`/agent <anything>`** in game, for example `/agent what's this block?`
+or `/agent why is it lagging here?`. Your AI gets the request with where you are and what you're looking at, and
+answers in your chat as **[AI]**. `/agent` on its own shows whether your AI is listening. Requests go from your game
+straight to your AI and never to the server; answers show on your screen only. If the AI takes over a camera to
+show you something, **Esc** or **Backspace** puts you back in your own view.
+
+### Connect your AI
+
+In game, type **`/lensbridge connect`** and click the button for your app:
+
+- **[Claude Code]**: paste into a terminal and press Enter.
+- **[Claude Desktop]**: paste into Settings → Developer → Edit Config, then restart Claude (needs Node.js).
+- **[Cursor, VS Code, other apps]**: paste into the app's MCP settings.
+
+You do this once; it keeps working in singleplayer and on every server. (The Camera Manager, **Alt+C**, also has a
+**Copy connect command** button for Claude Code.) The token is only inside the buttons, never in the chat text, so
+it doesn't end up in logs or screenshots.
 
 Other assistants that support MCP over HTTP: connect to `http://127.0.0.1:25599/mcp` with the header `Authorization: Bearer <token>`. To find the token yourself, open `config/lensbridge.json` in a text editor (Prism: right-click the instance → Folder → `config`) and copy the value after `"token":`, without the quotes.
 
@@ -193,6 +209,26 @@ aiControl = "OPS"     # OPS, EVERYONE or NOBODY
 ```
 
 Changes apply within a few seconds, without a restart. With a permission mod such as **LuckPerms** you can also allow or deny it per player or group with the permission nodes `lensbridge.free_cameras` and `lensbridge.ai_control`. Commands an AI runs still need their normal permissions either way.
+
+### Your server's tools for your staff's AI
+
+With **Agentlink** on the server too, staff can ask their own AI about the server: health and lag, who's online
+and what they carry, any installed mod's items and recipes, and live chat, joins, deaths and commands. Staff
+need only Lensbridge on their own PC, connected to their AI as usual. The calls travel over their game
+connection, so you don't open a port or hand out a token. Their AI uses `server_tools`, `server_call` and
+`server_events`. Staff set up once with `/lensbridge connect` (see §9); `/agentlink connect` on the server points
+players there too.
+
+```toml
+serverAgent = "OPS"          # who: OPS, EVERYONE or NOBODY
+serverAgentLevel = "READ"    # what: READ (look only), MODERATE (message, broadcast, mute, kick, whitelist),
+                             #       ADMIN (also ban and unban)
+```
+
+With a permission mod, the string node `lensbridge.server_agent` gives a player `none`, `read`, `moderate` or
+`admin`. A ban never happens on the AI's word alone: the staff member gets **[Confirm]** / **[Cancel]** buttons in
+their chat. Kicks, bans and whitelist changes run the normal commands, so ops see the usual notices. The server checks every call and writes it to `agentlink/audit.log` under the staff member's name.
+Changes apply within a few seconds.
 
 ## 11. Troubleshooting
 

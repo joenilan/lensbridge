@@ -9,6 +9,11 @@ You are driving a **live Minecraft client** that a person may be playing or watc
 - MCP Streamable HTTP: `http://127.0.0.1:25599/mcp` with header `Authorization: Bearer <token>`. The token is in `<game dir>/config/lensbridge.json`.
 - REST mirror for scripts: `POST /api/<tool>` with the JSON arguments as the body. `GET /api/` lists tools and schemas. `GET /health` needs no token.
 - Results are MCP content blocks: text, plus a JPEG preview image for visual tools. Full-size files are saved on disk and their paths are in the text.
+- If **Agentlink** is installed (`GET /health` says `"name":"agentlink"`), the same tools come through it: same names, same
+  address, but the token is in `config/agentlink.json`. `list_capabilities` then shows every other mod's tools too
+  (ids like `mothlight.nearby`, MCP names like `mothlight_nearby`). Lensbridge also publishes events there
+  (`poll_events`, or `GET /events`): `lensbridge.video_saved` (any MP4 finished), `lensbridge.recording_started` /
+  `lensbridge.recording_finished` (the player's Alt+R recorder) and `lensbridge.tripod_placed` (the player pressed Alt+T).
 - Always start with **`status`**: is a world loaded, is a screen (menu) open, where is the player, what's the camera state, are shaders on.
 
 ---
@@ -27,6 +32,26 @@ You are driving a **live Minecraft client** that a person may be playing or watc
 8. **Respect server rules.** On a server, free cameras and tools that act as the player (`look`, `hold_keys`, `press`, `hotbar`, `chat`, `command`, `screen_click`...) may be refused: the error says why. Don't try to work around it; tell the person (an operator or the server owner can allow it; see the user guide, "Playing on servers"). Singleplayer is unrestricted.
 
 ---
+
+## 1b. The server's own tools (staff)
+
+On a server that runs Agentlink and Lensbridge and gives the player staff access, `server_tools` lists that
+server's tools (status and lag, players and inventories, every mod's items and recipes) and the player's access;
+`server_call {"tool": "...", "args": {...}}` runs one; `server_events` reads its live chat, joins, deaths and
+commands. They run on the server, as the player, and are logged there under their name: only look into players
+or inventories when the person asked for it. Anywhere else these tools say why they're unavailable.
+
+## 1c. In-game requests (/agent)
+
+When the person wants to ask from inside the game, listen: call `agent_inbox` (it waits up to `wait_seconds`) in a
+loop, and answer each request with `agent_say`, a line or two in their chat. Each request includes the player's
+position, dimension, facing and what they're looking at, so "what's this?" and "go look over there" are answerable.
+To show them something, use a camera (drone_fly, camera_look_at, tripod_preview), never their own view; Esc or
+Backspace returns them. If they're staff on a server with tools, use server_call (e.g. agentlink_lag,
+agentlink_player) for server questions. Moderation (message, mute, kick, ban...) only when the person asks for it,
+with the reason they gave; say what you did. A ban waits for them to click [Confirm] in their chat: tell them so. To show
+them a player or a place, server_call agentlink_watch (spectator; agentlink_watch_stop or /agentlink back returns
+them); to keep evidence, `record` while they watch, then agentlink_note with the file name.
 
 ## 2. Core workflow
 

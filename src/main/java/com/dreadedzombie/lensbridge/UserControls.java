@@ -222,6 +222,15 @@ public final class UserControls {
                     ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
             String name = Tripods.nextName();
             Tripods.put(new Tripods.Tripod(name, v.pos(), v.yaw(), v.pitch(), v.fov(), null));
+            com.google.gson.JsonObject placed = new com.google.gson.JsonObject();
+            placed.addProperty("name", name);
+            placed.addProperty("x", v.pos().x);
+            placed.addProperty("y", v.pos().y);
+            placed.addProperty("z", v.pos().z);
+            placed.addProperty("yaw", v.yaw());
+            placed.addProperty("pitch", v.pitch());
+            placed.addProperty("source", "hotkey");
+            com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.publish("lensbridge.tripod_placed", placed);
             say("Placed " + name + " here (" + Tripods.all().size() + " tripods). Alt+N cycles through them.");
         }
         while (CYCLE.consumeClick()) {
@@ -250,8 +259,7 @@ public final class UserControls {
             say(toggleShowCameras() ? "Showing your cameras in the world (Alt+P to hide)" : "Cameras hidden");
         }
         while (MANAGER.consumeClick()) {
-            BridgeConfig c = Lensbridge.config();
-            net.minecraft.util.Util.getPlatform().openUri("http://" + c.host + ":" + c.port + "/ui#" + c.token);
+            net.minecraft.util.Util.getPlatform().openUri(Lensbridge.managerUrl());
             say("Opened the camera manager in your browser");
         }
         while (RECORD.consumeClick()) {

@@ -17,7 +17,7 @@ Read **[docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)** first, then use [docs/TOOLS.
 
   | Package | Contents |
   |---|---|
-  | `mcp/` | HTTP server (MCP JSON-RPC + REST + `/ui` + `/file`) and the `Tool` registry types |
+  | `mcp/` | HTTP server (MCP JSON-RPC + REST + `/ui` + `/file`), the `Tool` registry types, and `AgentlinkSupport` (hands everything to the Agentlink mod over InterModComms when it's installed; no compile dependency) |
   | `tools/` | Tool groups: `Tools` (core), `CinemaTools`, `DroneTools`, `ManagerTools`, `Rendering` (frame-exact and real-time video) |
   | `cinema/` | `Shot`, `Target`, `CameraPath`, `CameraProgram` (lock/orbit/pan/rail/follow/dolly), `Drone`, `Tripods` |
   | `mixin/` | Camera override (`CameraMixin`), stealth present-skipping (`MinecraftMixin`, `RenderSystemMixin`) |

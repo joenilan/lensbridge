@@ -32,3 +32,12 @@ config="${mod_id}.mixins.json"
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
+
+# Optional: Agentlink, the shared AI bridge. When it is installed Lensbridge plugs its tools into it instead of starting
+# its own server; without it Lensbridge runs its built-in server as always.
+[[dependencies.${mod_id}]]
+    modId="agentlink"
+    type="optional"
+    versionRange="[0.1.0,)"
+    ordering="NONE"
+    side="CLIENT"
