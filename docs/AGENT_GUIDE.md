@@ -137,6 +137,12 @@ stage_clear {}                                     # remove it, unfreeze (or sta
 
 ---
 
+- **Keep the player out of the shot:** add `hide_player: true` to `screenshot`, `record`, `capture_orbit`, `capture_path`,
+  `capture_program`, `stage_shoot`, `tripod_shots`, `tripod_thumbs` or `multicam`. Their model, held items, armour, cape,
+  name tag, shadow and first-person hand are left out for that capture only and come back when it ends, even if it
+  fails (or at the panic key). No need for /gamemode spectator. The person can make it the default with
+  `hidePlayerInCaptures` in the config; `hide_player: false` then shows them for one capture.
+
 ## 6. Video: speed is always true (unless asked)
 
 - `record`: **real time** from whatever view is live (director camera, drone, tripod). Late frames are repeated, never sped up. Set `timelapse_interval` **only** when a timelapse is wanted.

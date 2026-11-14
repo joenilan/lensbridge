@@ -51,6 +51,14 @@ public final class Capture {
      */
     private static final java.util.concurrent.locks.ReentrantLock LOCK = new java.util.concurrent.locks.ReentrantLock();
     private static final int LOCK_WAIT_SECONDS = 30;
+    /**
+     * What the caller asked for with {@code hide_player} (null: not said, use the config's default). Set by
+     * BridgeServer.call for the duration of one tool call, on that call's thread; read when the capture lock is taken.
+     */
+    public static final ThreadLocal<Boolean> HIDE_PLAYER_REQUEST = new ThreadLocal<>();
+    /** While a capture holds the lock: the player's own model (and hand) is left out of every frame. */
+    private static volatile boolean hidePlayer;
+
     /** Set by the player's panic key: the running capture stops at its next frame grab. */
     private static volatile boolean abort;
 
@@ -69,11 +77,29 @@ public final class Capture {
         }
         if (LOCK.getHoldCount() == 1) {
             abort = false;   // a new sequence: an earlier panic press doesn't apply to it
+            Boolean asked = HIDE_PLAYER_REQUEST.get();
+            hidePlayer = asked != null ? asked : Lensbridge.config().hidePlayerInCaptures;
         }
     }
 
     public static void unlock() {
+        if (LOCK.isHeldByCurrentThread() && LOCK.getHoldCount() == 1) {
+            hidePlayer = false;   // the sequence is over (finished, failed or stopped): the player shows again
+        }
         LOCK.unlock();
+    }
+
+    /**
+     * The local player is being kept out of the picture: their model with everything drawn on it (armour, held items,
+     * cape, elytra, name tag, shoulder parrots) and its shadow, plus the first-person hand. Render thread.
+     */
+    public static boolean hidingPlayer() {
+        return hidePlayer;
+    }
+
+    /** Release the hiding at once (panic key). Any thread. */
+    public static void stopHidingPlayer() {
+        hidePlayer = false;
     }
 
     /** A capture sequence (a recording, a render, screenshots, thumbnails) is running. Any thread. */

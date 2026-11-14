@@ -313,6 +313,7 @@ Changes apply within a few seconds.
 | `captureDir` | `lensbridge` | Folder for screenshots and videos |
 | `keepRunningUnfocused` | `true` | Don't pause or slow down when the window isn't focused |
 | `stealthCapture` | `true` | Assistant cameras render behind the scenes (your screen doesn't change) |
+| `hidePlayerInCaptures` | `false` | Leave your own character out of screenshots, recordings and renders made by the AI tools. A single capture can say otherwise with `hide_player`. |
 | `ffmpeg` | `ffmpeg` | Path to ffmpeg for video |
 | `previewMaxEdge` | `1280` | Size of the small previews sent to an assistant |
 

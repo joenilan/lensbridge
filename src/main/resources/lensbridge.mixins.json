@@ -8,6 +8,7 @@
     "DeltaTrackerTimerMixin",
     "DisplayAccessor",
     "EntityRenderDispatcherMixin",
+    "GameRendererMixin",
     "ItemDisplayAccessor",
     "KeyMappingAccessor",
     "MinecraftMixin"

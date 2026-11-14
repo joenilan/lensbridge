@@ -166,6 +166,13 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 - [ ] With no world open, `tripod_list` still lists cameras
 - [ ] `restore` does not put back time of day or weather; a freeze made by `stage_build` is undone by `stage_clear`, not `restore`
 
+## 0.6.1
+
+- [x] `hide_player` on every capture tool (owner's request, 2026-11-14: "maybe hide me when screenshotting or using
+      lensbridge?"), config default `hidePlayerInCaptures`. Held by the capture lock, so it ends with the capture,
+      failed or not; the panic key also ends it. NOT yet run in a game
+- [ ] Carry to mc/26.3
+
 ## 0.6: promo studio
 
 - [ ] **Hi-res stills:** offscreen render target at any size (4K/8K) without resizing the window; supersampling
