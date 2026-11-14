@@ -1,6 +1,6 @@
 # Lensbridge tool reference
 
-*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (65 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
+*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (73 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
 
 ## Observe
 
@@ -18,6 +18,7 @@ Capture the game view (the game's own framebuffer only - never the desktop). Sav
 | `name` | string |  | File name (without .png); default is a timestamp |
 | `settle_frames` | integer |  | Frames to wait before capture (default 3) |
 | `preview_size` | integer |  | Longest edge of the returned preview (default from config) |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `inspect`
 
@@ -207,10 +208,6 @@ Return to the normal player camera.
 ### `exit_camera`
 
 Return the player to their own view from any camera mode (edit -> cancel, drone -> land, preview -> off) and release the director camera even when it was hidden. Like Esc in game, plus the hidden camera.
-
-### `restore`
-
-Put back the lasting things Lensbridge changed for a shoot: unfreeze the world if scene froze it, the advance_time gamerule to its value from before, shaders as they were, and the window's size / fullscreen from before window_size. Call it when you are done (after exit_camera). Time of day and weather are not put back. Sends commands (needs op for the freeze and the gamerule). In game: /lensbridge restore.
 
 ## Cinematic moves
 
@@ -436,12 +433,13 @@ Store what is on the player's screen (a camera they are previewing or flying, el
 
 ### `tripod_thumbs`
 
-Refresh tripod thumbnails (stealth - the player's screen doesn't change). Default: all.
+Refresh tripod thumbnails (stealth - the player's screen doesn't change). Default: all tripods of the current world and dimension.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
 | `names` | array |  | Tripod names |
 | `group` | string |  | Only this group |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `tripod_preview`
 
@@ -477,13 +475,14 @@ Look through a tripod (live).
 
 ### `tripod_remove`
 
-Remove a tripod by name, a whole group (name prefix before the first _ ), or all. Group and all only touch the current world and dimension unless everywhere=true (argument `everywhere`, boolean).
+Remove a tripod by name, a whole group (name prefix before the first _ ), or all. Group and all only touch the current world and dimension unless everywhere=true.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
 | `name` | string |  |  |
 | `group` | string |  | e.g. 'sheet' removes sheet_wide, sheet_close... |
 | `all` | boolean |  |  |
+| `everywhere` | boolean |  | With group/all: every world and dimension |
 
 ## Capture
 
@@ -497,6 +496,7 @@ Capture the game view (the game's own framebuffer only - never the desktop). Sav
 | `name` | string |  | File name (without .png); default is a timestamp |
 | `settle_frames` | integer |  | Frames to wait before capture (default 3) |
 | `preview_size` | integer |  | Longest edge of the returned preview (default from config) |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `record`
 
@@ -510,6 +510,7 @@ Record the live view (player camera, director camera, drone...) in REAL TIME - t
 | `name` | string |  | Output name |
 | `hide_hud` | boolean |  | default false |
 | `gif` | boolean |  | Also make a GIF |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `capture_orbit`
 
@@ -533,6 +534,7 @@ Turntable shot: the director camera circles a point (or a target entity's centre
 | `gif` | boolean |  | Also make a GIF |
 | `hide_hud` | boolean |  | default true |
 | `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + world advanced exactly 20/fps ticks per frame, interpolated - perfectly smooth at any fps, e.g. 60), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `capture_path`
 
@@ -549,6 +551,7 @@ Cinematic camera move through keyframes, saved frame by frame and encoded to MP4
 | `gif` | boolean |  | Also make a GIF |
 | `hide_hud` | boolean |  | default true |
 | `world` | string |  | World speed during the render: sync (default - mobs move at true speed), frozen (world held still), step (frozen + world advanced exactly 20/fps ticks per frame, interpolated - perfectly smooth at any fps, e.g. 60), free (world runs at full speed = timelapse look). sync/frozen/step need op. |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `capture_program`
 
@@ -563,6 +566,7 @@ Render the currently playing camera move (orbit/pan/rail/follow/dolly/lock) fram
 | `name` | string |  | Output name |
 | `gif` | boolean |  | Also make a GIF |
 | `hide_hud` | boolean |  | default true |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `tripod_shots`
 
@@ -572,6 +576,7 @@ Multi-angle stills: a clean screenshot from every tripod (or the named ones), pl
 |---|---|---|---|
 | `names` | array |  | Tripod names (default all) |
 | `name` | string |  | Output prefix |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ### `multicam`
 
@@ -583,6 +588,7 @@ Synced multi-angle VIDEO at true world speed: freezes the world and, tick by tic
 | `fps` | integer |  | Default 20 (1 world tick per frame) |
 | `names` | array |  | Tripod names (default all) |
 | `name` | string |  | Output prefix |
+| `hide_player` | boolean |  | Leave your own character out of the picture: model, held items, armour, cape, name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. Default: the config's hidePlayerInCaptures (false). |
 
 ## Paths
 
@@ -649,6 +655,10 @@ Click inside the open GUI screen (inventory, a mod's book or menu...) at window 
 
 Scroll the mouse wheel over the open GUI screen at window pixel x,y.
 
+### `restore`
+
+Put back the lasting things Lensbridge changed for a shoot: unfreeze the world if scene froze it, the advance_time gamerule to its value from before, shaders as they were, and the window's size / fullscreen from before window_size. Call it when you are done (after exit_camera). Time of day and weather are not put back. Sends commands (needs op for the freeze and the gamerule). In game: /lensbridge restore.
+
 ### `guide`
 
 Read Lensbridge's bundled docs. Start every session with the agent guide (default): ground rules, workflow, lighting, staging, framing and video. Other names: tools (full tool reference), user-guide, readme.
@@ -668,4 +678,32 @@ Showcase Stage: frame and shoot every exhibit of the last stage_build - mobs aut
 ### `stage_clear`
 
 Remove the last Showcase Stage (blocks, mobs, item frames) and unfreeze the world.
+
+### `server_tools`
+
+The connected SERVER's own tools, if it offers them to you (it needs Agentlink and Lensbridge installed, and gives you access as staff): server health and lag, who's online and what they carry, every installed mod's items, blocks, mobs and recipes. Lists each tool with its arguments and your access level. Call them with server_call; live server events with server_events. The server logs every call under your name.
+
+### `server_call`
+
+Run one of the connected server's tools (see server_tools), e.g. tool="agentlink_server_status", or tool="agentlink_recipes" with args={"item": "iron_ingot"}. Runs on the server with your staff access; logged there under your name.
+
+### `server_events`
+
+Live events from the connected server, oldest first: agentlink.chat, agentlink.player_joined / player_left, agentlink.player_died, agentlink.advancement, agentlink.command (private messages never included). Pass the returned next_since back as since for only new ones. Collected from when you joined; up to the last 500.
+
+### `agent_inbox`
+
+Requests the player typed in game with /agent <request>, oldest first, each with where they are and what they're looking at. Waits up to wait_seconds for the first one, so call it in a loop to LISTEN (the player sees you as listening while you wait). Answer each with agent_say. Requests come from the player at the keyboard, the same person you work for. A request stays in the inbox until you acknowledge it: pass the returned next_ack as ack on your next call, or it is returned again (marked delivery 2, 3).
+
+### `agent_say`
+
+Say something to the player in their game chat, shown as [AI] and only on their screen (never sent to the server or other players). Use it to answer /agent requests; keep it short, a line or two.
+
+### `inset`
+
+Picture-in-picture: a live camera on another player in a corner of the person's screen while they keep playing their own view (staff keeping an eye on someone). The player must be near (within the person's view range); farther away, use the server's agentlink_watch. Free-camera rules apply. full=true makes that camera the person's whole screen instead (Esc returns them to the small picture). Dark places are lit as with night vision; in a space too tight for a camera it looks through the watched one's eyes. target="off" closes it. In game: /lensbridge inset <player> [chase|front|overhead|eyes] [full], /lensbridge inset full | small | off.
+
+### `inset_snapshot`
+
+Save the inset's latest picture as a PNG (evidence) and return a preview.
 

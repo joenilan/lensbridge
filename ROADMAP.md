@@ -156,7 +156,10 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 
 - [x] `hide_player` on every capture tool (owner's request, 2026-11-14: "maybe hide me when screenshotting or using
       lensbridge?"), config default `hidePlayerInCaptures`. Held by the capture lock, so it ends with the capture,
-      failed or not; the panic key also ends it. NOT yet run in a game
+      failed or not; the panic key also ends it. Tested 2026-11-14 in the offline dev game: director-camera
+      screenshot with and without it (model, helmet, sword and shield gone, back afterwards), first-person screenshot
+      (hand and items gone), a 2 s recording, a 6-frame orbit render, the player back after a failed capture and after
+      the panic key during a recording. Not run: with Sodium/Iris shaders (Iris draws its own shadow pass)
 - [ ] Carry to mc/26.3
 
 ## 0.6: promo studio
