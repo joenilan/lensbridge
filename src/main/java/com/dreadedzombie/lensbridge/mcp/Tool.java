@@ -62,6 +62,16 @@ public record Tool(String name, String description, JsonObject schema, Function<
             return new Result().addText(text);
         }
 
+        /** An MCP CallToolResult built elsewhere (e.g. relayed from the server). */
+        public static Result raw(JsonObject mcpResult) {
+            Result r = new Result();
+            if (mcpResult.has("content") && mcpResult.get("content").isJsonArray()) {
+                r.content.addAll(mcpResult.getAsJsonArray("content"));
+            }
+            r.error = mcpResult.has("isError") && mcpResult.get("isError").getAsBoolean();
+            return r;
+        }
+
         public static Result error(String text) {
             Result r = text(text);
             r.error = true;

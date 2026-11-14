@@ -45,6 +45,14 @@ public final class BridgeServer {
 
     public void start() throws IOException {
         this.http = HttpServer.create(new InetSocketAddress(this.config.host, this.config.port), 0);
+        try {
+            if (!java.net.InetAddress.getByName(this.config.host).isLoopbackAddress()) {
+                Lensbridge.LOGGER.warn("Lensbridge: \"host\" is {} - not this computer only. Anyone on that network who learns the "
+                        + "token can see and drive this game; traffic is not encrypted. Use 127.0.0.1 unless you mean it.", this.config.host);
+            }
+        } catch (java.net.UnknownHostException e) {
+            // HttpServer.create has already accepted the address
+        }
         this.http.setExecutor(Executors.newCachedThreadPool(r -> {
             Thread t = new Thread(r, "lensbridge-http");
             t.setDaemon(true);
@@ -53,8 +61,8 @@ public final class BridgeServer {
         this.http.createContext("/health", ex -> send(ex, 200, "{\"ok\":true,\"name\":\"lensbridge\"}"));
         this.http.createContext("/mcp", this::handleMcp);
         this.http.createContext("/api/", this::handleRest);
-        this.http.createContext("/ui", this::handleUi);
-        this.http.createContext("/docs", this::handleDocs);
+        this.http.createContext("/ui", BridgeServer::handleUi);
+        this.http.createContext("/docs", BridgeServer::handleDocs);
         this.http.createContext("/file", this::handleFile);
         this.http.start();
         Lensbridge.LOGGER.info("Lensbridge listening on http://{}:{}/mcp ({} tools)", this.config.host, this.config.port, this.tools.size());
@@ -83,7 +91,7 @@ public final class BridgeServer {
     }
 
     /** /docs (index) and /docs/<name>: the bundled guides, as readable pages. */
-    private void handleDocs(HttpExchange ex) throws IOException {
+    static void handleDocs(HttpExchange ex) throws IOException {
         String path = ex.getRequestURI().getPath();
         String name = path.length() > 6 ? path.substring(6) : "";
         String md = name.isEmpty() ? null : doc(name);
@@ -107,7 +115,7 @@ public final class BridgeServer {
         ex.close();
     }
 
-    private void handleUi(HttpExchange ex) throws IOException {
+    static void handleUi(HttpExchange ex) throws IOException {
         try (var in = BridgeServer.class.getResourceAsStream("/assets/lensbridge/ui/index.html")) {
             byte[] page = in == null ? "missing ui".getBytes(StandardCharsets.UTF_8) : in.readAllBytes();
             ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
@@ -121,10 +129,15 @@ public final class BridgeServer {
 
     /** Serve a file from the capture folder (thumbnails, screenshots, videos). Token via header or ?token=. */
     private void handleFile(HttpExchange ex) throws IOException {
-        if (!authorized(ex)) {
+        if (!authorized(ex, true)) {
             send(ex, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
+        serveFile(ex);
+    }
+
+    /** The /file body, without the token check (Agentlink checks the token before calling it). */
+    static void serveFile(HttpExchange ex) throws IOException {
         String q = ex.getRequestURI().getRawQuery() == null ? "" : ex.getRequestURI().getRawQuery();
         String rel = "";
         for (String part : q.split("&")) {
@@ -149,10 +162,14 @@ public final class BridgeServer {
         ex.close();
     }
 
-    private boolean authorized(HttpExchange ex) {
+    /**
+     * {@code queryToken}: also accept ?token=. Only /file does (an <img> or <video> tag can't send a header); everywhere
+     * else the token must be in the Authorization header, so it doesn't end up in URLs, logs and browser history.
+     */
+    private boolean authorized(HttpExchange ex, boolean queryToken) {
         String header = ex.getRequestHeaders().getFirst("Authorization");
         String q = ex.getRequestURI().getRawQuery();
-        if (header == null && q != null) {
+        if (queryToken && header == null && q != null) {
             for (String part : q.split("&")) {
                 if (part.startsWith("token=")) {
                     header = "Bearer " + part.substring(6);
@@ -164,7 +181,7 @@ public final class BridgeServer {
     }
 
     private void handleRest(HttpExchange ex) throws IOException {
-        if (!authorized(ex)) {
+        if (!authorized(ex, false)) {
             send(ex, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
@@ -181,12 +198,21 @@ public final class BridgeServer {
             return;
         }
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        JsonObject args = body.isBlank() ? new JsonObject() : JsonParser.parseString(body).getAsJsonObject();
+        JsonObject args;
+        try {
+            args = body.isBlank() ? new JsonObject() : JsonParser.parseString(body).getAsJsonObject();
+        } catch (RuntimeException e) {
+            // an answer instead of a dropped connection, so the caller can see what was wrong
+            JsonObject err = new JsonObject();
+            err.addProperty("error", "The request body must be a JSON object with the tool's arguments: " + e.getMessage());
+            send(ex, 400, GSON.toJson(err));
+            return;
+        }
         send(ex, 200, GSON.toJson(call(tool, args).toJson()));
     }
 
     private void handleMcp(HttpExchange ex) throws IOException {
-        if (!authorized(ex)) {
+        if (!authorized(ex, false)) {
             send(ex, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
@@ -202,9 +228,17 @@ public final class BridgeServer {
             send(ex, 400, rpcError(null, -32700, "Parse error"));
             return;
         }
+        if (!parsed.isJsonObject() && !parsed.isJsonArray()) {
+            send(ex, 400, rpcError(null, -32600, "Invalid request: expected a JSON-RPC object or a batch"));
+            return;
+        }
         if (parsed.isJsonArray()) {
             JsonArray out = new JsonArray();
             for (JsonElement el : parsed.getAsJsonArray()) {
+                if (!el.isJsonObject()) {
+                    send(ex, 400, rpcError(null, -32600, "Invalid request: every batch entry must be a JSON-RPC object"));
+                    return;
+                }
                 JsonObject res = rpc(el.getAsJsonObject(), ex);
                 if (res != null) {
                     out.add(res);
@@ -228,7 +262,7 @@ public final class BridgeServer {
     /** Handle one JSON-RPC message; null for notifications. */
     private JsonObject rpc(JsonObject msg, HttpExchange ex) {
         JsonElement id = msg.get("id");
-        String method = msg.has("method") ? msg.get("method").getAsString() : "";
+        String method = msg.has("method") && msg.get("method").isJsonPrimitive() ? msg.get("method").getAsString() : "";
         JsonObject params = msg.has("params") && msg.get("params").isJsonObject() ? msg.getAsJsonObject("params") : new JsonObject();
         if (id == null) {
             return null;   // notification (e.g. notifications/initialized)
@@ -259,7 +293,7 @@ public final class BridgeServer {
                 return rpcResult(id, result);
             }
             case "tools/call" -> {
-                String name = params.has("name") ? params.get("name").getAsString() : "";
+                String name = params.has("name") && params.get("name").isJsonPrimitive() ? params.get("name").getAsString() : "";
                 Tool tool = this.tools.get(name);
                 if (tool == null) {
                     return GSON.fromJson(rpcError(id, -32602, "Unknown tool: " + name), JsonObject.class);
@@ -274,11 +308,18 @@ public final class BridgeServer {
         }
     }
 
-    /** Tools that act as the player: a bot, as far as a server is concerned (see Policy). */
+    /**
+     * Tools that act as the player: a bot, as far as a server is concerned (see Policy). That includes the ones that
+     * send commands for a shoot (scene, multicam, the Showcase Stage); frame-exact captures with world=sync / frozen /
+     * step send /tick commands too and are checked where the mode is known (Rendering.render). Not `restore`: it only
+     * undoes what an allowed `scene` did, and must always be able to put the window and shaders back.
+     */
     private static final java.util.Set<String> CONTROL = java.util.Set.of("command", "chat", "look", "hold_keys", "press",
-            "hotbar", "screen_click", "screen_scroll", "close_screen");
+            "hotbar", "screen_click", "screen_scroll", "close_screen",
+            "scene", "multicam", "stage_build", "stage_shoot", "stage_clear");
 
-    private static Tool.Result call(Tool tool, JsonObject args) {
+    /** Run a tool the way every transport does: server rules first, errors become an error result. */
+    public static Tool.Result call(Tool tool, JsonObject args) {
         try {
             if (CONTROL.contains(tool.name())) {
                 com.dreadedzombie.lensbridge.Policy.requireControl(tool.name());
@@ -331,18 +372,22 @@ public final class BridgeServer {
         ex.close();
     }
 
-    private static final String INSTRUCTIONS = """
+    static final String INSTRUCTIONS = """
             Lensbridge drives a LIVE Minecraft client that a person may be playing. Read the full agent guide first: call the \
             `guide` tool (or guide {"name":"tools"} for the tool reference).
             Rules: (1) Start with `status`. (2) NEVER use the player's own view as your camera - frame with camera_look_at, \
             tripods (tripod_place/tripod_ring) or drone_fly; with stealth capture the player's screen doesn't change. You may \
             teleport the player near a location only so its chunks load (ask if they are playing). (3) Never build scenes block \
             by block - use one datapack function / fill. (4) scene {"freeze":true} before staging and shooting; scene \
-            {"look":"qa"} for honest lighting (shaders off). (5) Flat things (wings, items lying down) need ~45-60 degree \
+            {"look":"qa"} for honest lighting (shaders off); `restore` puts the freeze, gamerule, shaders and window back. (5) Flat things (wings, items lying down) need ~45-60 degree \
             top-down angles; distance grows with subject size - check tripod_thumbs before tripod_shots. (6) Video speed is \
             true by default: record = real time, capture_* render frame-exact with world=sync; timelapse only via \
             timelapse_interval or world=free. (7) Open and look at the saved images before claiming anything; report \
-            honestly and give the person the file paths. (8) Finish with exit_camera / camera_release so the player is back \
-            on their own view.""";
+            honestly and give the person the file paths. (8) Finish with exit_camera (the player is back on their own view, \
+            hidden camera released) and restore (undoes scene / window_size changes). (9) The player can ask you from inside the game with /agent <request>: when they want that, \
+            LISTEN by calling agent_inbox in a loop (pass each call's next_ack as ack on the next) and answer each request \
+            with agent_say (short, in their chat). On a \
+            server that lends them its tools, server_tools / server_call reach it. (10) Never send "agentlink confirm" or \
+            "agentlink cancel": a person confirms in game.""";
 
 }

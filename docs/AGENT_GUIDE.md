@@ -9,6 +9,11 @@ You are driving a **live Minecraft client** that a person may be playing or watc
 - MCP Streamable HTTP: `http://127.0.0.1:25599/mcp` with header `Authorization: Bearer <token>`. The token is in `<game dir>/config/lensbridge.json`.
 - REST mirror for scripts: `POST /api/<tool>` with the JSON arguments as the body. `GET /api/` lists tools and schemas. `GET /health` needs no token.
 - Results are MCP content blocks: text, plus a JPEG preview image for visual tools. Full-size files are saved on disk and their paths are in the text.
+- If **Agentlink** is installed (`GET /health` says `"name":"agentlink"`), the same tools come through it: same names, same
+  address, but the token is in `config/agentlink.json`. `list_capabilities` then shows every other mod's tools too
+  (ids like `mothlight.nearby`, MCP names like `mothlight_nearby`). Lensbridge also publishes events there
+  (`poll_events`, or `GET /events`): `lensbridge.video_saved` (any MP4 finished), `lensbridge.recording_started` /
+  `lensbridge.recording_finished` (the player's Alt+R recorder) and `lensbridge.tripod_placed` (the player pressed Alt+T).
 - Always start with **`status`**: is a world loaded, is a screen (menu) open, where is the player, what's the camera state, are shaders on.
 
 ---
@@ -19,14 +24,45 @@ You are driving a **live Minecraft client** that a person may be playing or watc
    - You *may* move the player near a location (e.g. `command tp`) only so its chunks load: cameras only see what's loaded around the player. Ask first if the person is playing.
    - Use the player as a *subject* (e.g. drone follow) only when asked.
 2. **Clean up after yourself.** Remove cameras you placed for a job (`tripod_remove {"group":"tmp"}` removes a whole name group), `stage_clear` stages, `props {"enabled":false}`.
-3. **Don't leave the player stuck.** If you turn on `camera_preview`, `tripod_preview` or `tripod_edit`, finish with `exit_camera`. Always `camera_release` when your session ends.
+3. **Don't leave the player stuck.** Finish every session with `exit_camera` (it returns the player to their own view and releases the director camera, hidden or shown) and then `restore` (it undoes what `scene` and `window_size` left changed: world freeze, the `advance_time` gamerule, shaders, window size / fullscreen). Time of day and weather are yours to put back. The player's own way out is Alt+Backspace (stops your capture) and `/lensbridge restore`.
+   - One capture runs at a time. A second one waits up to 30 s, then fails with "Another capture is running": wait for the first, don't retry in a loop.
+   - **Never send `agentlink confirm` or `agentlink cancel`** (the `command` and `chat` tools refuse them, and `screen_click` doesn't click in the chat screen). A person confirms a ban or rollback in game.
 4. **Never build a scene block by block** with hundreds of `command` calls; it's slow and the person hates it. Use one `fill`, a **structure**, or a **datapack function** run by a single `/function` call (see §4).
-5. **Freeze before staging** (`scene {"freeze":true}`) so nothing hatches, grows, wanders or despawns mid-shoot. Unfreeze when done.
+5. **Freeze before staging** (`scene {"freeze":true}`) so nothing hatches, grows, wanders or despawns mid-shoot. Unfreeze when done (`restore` does it).
 6. **Verify with your eyes and say what you actually saw.** Open the saved images; don't assume a shot worked. Report problems honestly, including your own staging mistakes.
 7. **Show results to the person.** Put the image and video file paths in your reply (the host can embed them). Videos are the point when they ask for video.
 8. **Respect server rules.** On a server, free cameras and tools that act as the player (`look`, `hold_keys`, `press`, `hotbar`, `chat`, `command`, `screen_click`...) may be refused: the error says why. Don't try to work around it; tell the person (an operator or the server owner can allow it; see the user guide, "Playing on servers"). Singleplayer is unrestricted.
 
 ---
+
+## 1b. The server's own tools (staff)
+
+On a server that runs Agentlink and Lensbridge and gives the player staff access, `server_tools` lists that
+server's tools (status and lag, players and inventories, every mod's items and recipes) and the player's access;
+`server_call {"tool": "...", "args": {...}}` runs one; `server_events` reads its live chat, joins, deaths and
+commands. They run on the server, as the player, and are logged there under their name: only look into players
+or inventories when the person asked for it. Anywhere else these tools say why they're unavailable.
+
+## 1c. In-game requests (/agent)
+
+When the person wants to ask from inside the game, listen: call `agent_inbox` (it waits up to `wait_seconds`) in a
+loop, and answer each request with `agent_say`, a line or two in their chat. Each call returns `next_ack`: pass it as
+`ack` on your next call. A request stays in the inbox until acknowledged and comes back otherwise (marked
+`"delivery": 2`), so check the id before answering one twice. Each request includes the player's
+position, dimension, facing and what they're looking at, so "what's this?" and "go look over there" are answerable.
+To show them something, use a camera (drone_fly, camera_look_at, tripod_preview), never their own view; Esc or
+Backspace returns them. If they're staff on a server with tools, use server_call (e.g. agentlink_lag,
+agentlink_player) for server questions. Moderation (message, mute, kick, ban...) only when the person asks for it,
+with the reason they gave; say what you did. A ban waits for them to click [Confirm] in their chat: tell them so. To show
+them a player or a place, server_call agentlink_watch (spectator; agentlink_watch_stop or /agentlink back returns
+them); to keep evidence, `record` while they watch, then agentlink_note with the file name. To let them keep
+playing while watching someone NEAR them, `inset {"target": "<player>"}` (picture-in-picture; mode chase / front /
+overhead), `inset_snapshot` saves its picture as evidence, `inset {"target": "off"}` closes it. `mode: "eyes"` is exactly what they see; `full: true`
+makes the camera the person's whole screen (Esc returns them to the corner picture). To watch someone far away, first
+`server_call` `agentlink.watch` with `view: "near"` (the staff member goes there, invisible), then `inset`. The inset camera
+moves in front of walls, roofs and leaves on its own. `inset_snapshot` waits for a fresh picture. Captures work with
+the game window in the background too, including with Dynamic FPS installed (Lensbridge keeps frames coming while it
+works), and with Sodium and Iris.
 
 ## 2. Core workflow
 
@@ -39,8 +75,15 @@ tripod_place / tripod_ring               # cameras around the subject (or camera
 tripod_thumbs {"group":"hero"}           # cheap stealth previews to check framing
 tripod_shots  {"names":[...]}            # full-size stills + a contact sheet
 ... look at the files, fix framing (tripod_update / tripod_nudge), re-shoot ...
-scene  {"freeze":false} ; camera_release
+exit_camera ; restore                    # finish: player back on their own view, camera released; freeze,
+                                         # advance_time, shaders and window put back as they were
 ```
+
+Tripods belong to the world and dimension they were placed in: `tripod_list`, `tripod_all`, `tripod_thumbs`,
+`tripod_shots` and `multicam` use the current one by default (`all: true` on the two lists shows every world;
+`tripod_remove` with `group` / `all` takes `everywhere: true`). Names are global, so a name used in another world
+is taken. `tripod_set_from_view` only updates an existing tripod. Output `name` arguments are reduced to letters,
+digits, `_`, `.` and `-`.
 
 ---
 
@@ -99,6 +142,7 @@ stage_clear {}                                     # remove it, unfreeze (or sta
 - `record`: **real time** from whatever view is live (director camera, drone, tripod). Late frames are repeated, never sped up. Set `timelapse_interval` **only** when a timelapse is wanted.
 - `capture_orbit`, `capture_path`, `capture_program` and `multicam` render **frame by frame**, so camera motion is perfectly smooth. `world` controls the world during the render:
   - `sync` (default): the world moves at true speed.
+  - `sync`, `frozen` and `step` send `/tick` commands, so on a server they need the same permission as `command` (the server's AI-control rule). `free` sends none.
   - `step`: frozen, then stepped 20/fps ticks per frame, for perfectly smooth moving subjects.
   - `frozen`: everything held still.
   - `free`: a deliberate timelapse look.
@@ -131,7 +175,9 @@ stage_clear {}                                     # remove it, unfreeze (or sta
 
 - They see your cameras and thumbnails in the **Camera Manager**. Name tripods with group prefixes (`hero_`, `wm_`, `jar_`) so the panel groups them.
 - If they're playing, keep `camera_preview` off (stealth) so their screen never jumps. If they want to watch, turn it on, and turn it off again afterwards.
-- Hotkeys they have: Alt+C manager, Alt+D drone, Alt+T tripod, Alt+N cycle, Alt+R record, Esc exits any camera mode.
+- Hotkeys they have: Alt+C manager, Alt+D drone, Alt+T tripod, Alt+X remove a tripod, Alt+N cycle, Alt+R record, Esc exits any camera mode, Alt+Backspace stops whatever capture is running (yours included: the tool call fails with "Capture stopped by the player"; don't restart it without asking).
+- Their Alt+T / Alt+D / "Save my view here" use what is on their screen; your hidden camera is never mistaken for their view. Alt+R releases a hidden camera first and records what they see.
+- `hold_keys` holds at most 60 s (1200 ticks) and lets go when any screen opens.
 - Ask before long or disruptive operations (resizing their window, teleporting them, changing shaders while they play).
 
 ---

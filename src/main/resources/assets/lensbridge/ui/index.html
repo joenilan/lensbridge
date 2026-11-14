@@ -62,8 +62,10 @@
 <div id="log"></div>
 <script>
 const TOKEN = location.hash.slice(1);
-let TRIPODS = [], GROUP = 'all', EDITING = null;
+let TRIPODS = [], GROUP = 'all', EDITING = null, SIG = null;
 const $ = s => document.querySelector(s);
+// camera names come from the game (anyone's tool call can set them): never put them into HTML unescaped
+const esc = v => String(v).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
 function log(msg) { const l = $('#log'); l.textContent = msg; l.style.display = 'block'; clearTimeout(log.t); log.t = setTimeout(() => l.style.display = 'none', 4000); }
 async function copyConnect() {
   const cmd = 'claude mcp add --transport http lensbridge ' + location.origin + '/mcp --header "Authorization: Bearer ' + TOKEN + '"';
@@ -92,6 +94,7 @@ function thumbUrl(t) { return '/file?path=' + encodeURIComponent('thumbs/' + t.n
 async function load() {
   const data = JSON.parse(await api('tripod_all'));
   TRIPODS = data.tripods;
+  SIG = data.signature || null;
   EDITING = data.editing || null;
   $('#editbar').classList.toggle('on', !!EDITING);
   $('#edname').textContent = EDITING || '';
@@ -124,11 +127,11 @@ function card(t) {
   const c = document.createElement('div'); c.className = 'card' + (t.enabled ? '' : ' disabled') + (EDITING === t.name ? ' editing' : ''); c.id = 'card-' + t.name;
   const f = (k, step) => `<label>${k}<input type="number" step="${step}" value="${(+t[k]).toFixed(step < 1 ? 1 : 0)}" data-k="${k}"></label>`;
   c.innerHTML = `
-    <div class="thumb">${t.has_thumb ? `<img src="${thumbUrl(t)}" alt="">` : 'no thumbnail yet'}</div>
+    <div class="thumb">${t.has_thumb ? `<img src="${esc(thumbUrl(t))}" alt="">` : 'no thumbnail yet'}</div>
     <div class="body">
-      <div class="row"><span class="name">${t.name}</span>
+      <div class="row"><span class="name">${esc(t.name)}</span>
         <label class="toggle"><input type="checkbox" ${t.enabled ? 'checked' : ''} data-en> on</label></div>
-      ${t.track ? `<div class="track">tracking ${JSON.stringify(t.track)}</div>` : ''}
+      ${t.track ? `<div class="track">tracking ${esc(JSON.stringify(t.track))}</div>` : ''}
       <div class="fields">${f('x', .25)}${f('y', .25)}${f('z', .25)}${f('yaw', 1)}${f('pitch', 1)}${f('fov', 1)}</div>
       <div class="pad">
         <button data-n='{"forward":0.5}'>fwd</button><button data-n='{"forward":-0.5}'>back</button>
@@ -177,15 +180,14 @@ async function shootEnabled() {
   log(text.split('\n').pop());
 }
 async function finishEdit(save) { log(await api('tripod_edit_finish', { save })); setTimeout(load, 1500); }
-// light polling: notice edits finished in game (Enter/Backspace) and refresh that card
-let lastEditing = null;
+// light polling: a small signature of the camera list (names, positions, thumbnails, edit state). It changes when a
+// camera is placed, moved or removed in game (Alt+T, Alt+X, an edit saved with Enter) and the page reloads the cards.
 setInterval(async () => {
   api('props', {}).then(syncCams).catch(() => {});
   try {
-    const d = JSON.parse(await api('tripod_all'));
-    const ed = d.editing || null;
-    if (ed !== EDITING || (lastEditing && !ed)) { setTimeout(load, ed ? 0 : 1500); }
-    lastEditing = ed;
+    const d = JSON.parse(await api('tripod_all', { signature_only: true }));
+    const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#grid input[type=number]');
+    if ((d.signature !== SIG || (d.editing || null) !== EDITING) && !typing) { await load(); }
   } catch (e) {}
 }, 1500);
 load().catch(e => console.error(e));

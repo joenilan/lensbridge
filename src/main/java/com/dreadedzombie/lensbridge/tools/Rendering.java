@@ -41,30 +41,45 @@ public final class Rendering {
 
     /** Render {@code frames} frames; {@code setup} positions the camera / clock for frame i (called off-thread). */
     public static Result render(String name, int fps, int frames, IntConsumer setup, String world, boolean hideHud, boolean gif) {
+        String mode = world == null ? "sync" : world.toLowerCase(Locale.ROOT);
+        if (!mode.equals("free")) {
+            // sync / frozen / step send /tick commands as the player: that is the AI acting for them, which a server's
+            // aiControl rule decides (the tool names alone, capture_*, are not in BridgeServer.CONTROL)
+            com.dreadedzombie.lensbridge.Policy.requireControl("a capture with world=" + mode
+                    + "; world=free sends no commands");
+        }
+        Capture.lock();   // one capture at a time (see Capture.lock)
         com.dreadedzombie.lensbridge.Stealth.begin();
         try {
             return renderInner(name, fps, frames, setup, world, hideHud, gif);
         } finally {
             com.dreadedzombie.lensbridge.Stealth.end();
+            Capture.unlock();
         }
     }
 
     private static Result renderInner(String name, int fps, int frames, IntConsumer setup, String world, boolean hideHud, boolean gif) {
         VideoStream video = Capture.stream(name, fps);   // first: if the encoder can't start, nothing has been changed yet
-        boolean hudBefore = Game.call(Game::hudHidden);
-        Game.run(() -> Game.setHudHidden(hideHud));
         String mode = world == null ? "sync" : world.toLowerCase(Locale.ROOT);
         double ticksPerFrame = 20.0 / fps;
         long stepped = 0;
         long started = System.nanoTime();
-        boolean wasFrozen = worldFrozen();
-        if ((mode.equals("frozen") || mode.equals("step")) && !wasFrozen) {
-            cmd("tick freeze");
-            Game.sleep(150);
-        }
+        boolean hudBefore = false;
+        boolean hudRead = false;
+        boolean froze = false;
         double avgFrameSeconds = -1;
         float lastRate = 20;
         try {
+            // inside the try: if one of these fails (left the world, a timeout), the encoder is still closed and
+            // whatever was already changed is put back
+            hudBefore = Game.call(Game::hudHidden);
+            hudRead = true;
+            Game.run(() -> Game.setHudHidden(hideHud));
+            if ((mode.equals("frozen") || mode.equals("step")) && !worldFrozen()) {
+                cmd("tick freeze");
+                froze = true;
+                Game.sleep(150);
+            }
             for (int i = 0; i < frames; i++) {
                 long t0 = System.nanoTime();
                 setup.accept(i);
@@ -105,17 +120,31 @@ public final class Rendering {
                 }
             }
         } finally {
+            // one try/finally per step: each restore runs whatever happens to the others (a failed command used to
+            // skip the HUD restore and leave it hidden)
             forcedPartial = -1f;
+            boolean hud = hudBefore;
+            boolean restoreHud = hudRead;
+            boolean unfreeze = froze;
+            boolean resetRate = mode.equals("sync") && lastRate != 20;
             try {
                 video.close();
             } finally {
-                if (mode.equals("sync") && lastRate != 20) {
-                    cmd("tick rate 20");
+                try {
+                    if (resetRate) {
+                        cmd("tick rate 20");
+                    }
+                } finally {
+                    try {
+                        if (unfreeze) {
+                            cmd("tick unfreeze"); // leave the world as we found it
+                        }
+                    } finally {
+                        if (restoreHud) {
+                            Game.run(() -> Game.setHudHidden(hud));
+                        }
+                    }
                 }
-                if ((mode.equals("frozen") || mode.equals("step")) && !wasFrozen) {
-                    cmd("tick unfreeze"); // leave the world as we found it
-                }
-                Game.run(() -> Game.setHudHidden(hudBefore));
             }
         }
         double took = (System.nanoTime() - started) / 1e9;
@@ -162,28 +191,36 @@ public final class Rendering {
     public static Result record(String name, int fps, double seconds, double timelapseInterval, boolean hideHud, boolean gif,
                                 java.util.function.BooleanSupplier keepGoing) {
         // recording a director/drone camera the player isn't previewing: keep it off their screen
-        boolean stealth = com.dreadedzombie.lensbridge.DirectorCamera.active && !com.dreadedzombie.lensbridge.DirectorCamera.preview;
-        if (stealth) {
-            com.dreadedzombie.lensbridge.Stealth.begin();
-        }
+        Capture.lock();   // one capture at a time (see Capture.lock)
         try {
-            return recordInner(name, fps, seconds, timelapseInterval, hideHud, gif, keepGoing);
-        } finally {
+            boolean stealth = com.dreadedzombie.lensbridge.DirectorCamera.active && !com.dreadedzombie.lensbridge.DirectorCamera.preview;
             if (stealth) {
-                com.dreadedzombie.lensbridge.Stealth.end();
+                com.dreadedzombie.lensbridge.Stealth.begin();
             }
+            try {
+                return recordInner(name, fps, seconds, timelapseInterval, hideHud, gif, keepGoing);
+            } finally {
+                if (stealth) {
+                    com.dreadedzombie.lensbridge.Stealth.end();
+                }
+            }
+        } finally {
+            Capture.unlock();
         }
     }
 
     private static Result recordInner(String name, int fps, double seconds, double timelapseInterval, boolean hideHud, boolean gif,
                                       java.util.function.BooleanSupplier keepGoing) {
         VideoStream video = Capture.stream(name, fps);   // first: if the encoder can't start, nothing has been changed yet
-        boolean hudBefore = Game.call(Game::hudHidden);
-        Game.run(() -> Game.setHudHidden(hideHud));
         long t0 = System.nanoTime();
         int written = 0;
         int grabbed = 0;
+        boolean hudBefore = false;
+        boolean hudRead = false;
         try {
+            hudBefore = Game.call(Game::hudHidden);   // inside the try, so the encoder is always closed
+            hudRead = true;
+            Game.run(() -> Game.setHudHidden(hideHud));
             if (timelapseInterval > 0) {
                 int total = (int) Math.round(seconds / timelapseInterval);
                 for (int i = 0; i < total && keepGoing.getAsBoolean(); i++) {
@@ -220,8 +257,15 @@ public final class Rendering {
                 }
             }
         } finally {
-            video.close();
-            Game.run(() -> Game.setHudHidden(hudBefore));
+            boolean hud = hudBefore;
+            boolean restoreHud = hudRead;
+            try {
+                video.close();
+            } finally {
+                if (restoreHud) {   // even when the encoder fails to close: never leave the HUD hidden
+                    Game.run(() -> Game.setHudHidden(hud));
+                }
+            }
         }
         double real = (System.nanoTime() - t0) / 1e9;
         String summary = timelapseInterval > 0

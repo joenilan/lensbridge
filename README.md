@@ -36,10 +36,12 @@
 | Alt+C | Camera Manager |
 | Alt+P | Show cameras in world (props) |
 | Alt+T | Place camera |
+| Alt+X | Remove the camera you look at or stand by |
 | Alt+N | Cycle cameras |
 | Alt+D | Drone |
 | Alt+R | Record |
 | Esc | Back to your own view |
+| Alt+Backspace | Panic: stop any capture, HUD back, your own view back |
 
 The rest of this file is the technical overview.
 
@@ -86,6 +88,18 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 
 `POST /api/<tool>` with the arguments as the JSON body. It returns `{"content":[{type:text|image,…}],"isError":false}`. `GET /health` needs no token.
 
+### With Agentlink (optional)
+
+**Agentlink** (not released yet) is a separate bridge mod that any mod can plug tools into (Mothlight, Murmur, ...), so one MCP
+connection drives all of them. **Lensbridge does not need it.** If Agentlink is installed, Lensbridge doesn't start its own
+server; it hands its tools, the Camera Manager and the docs pages to Agentlink instead. Nothing changes for you:
+
+- Same address and token: on its first start Agentlink copies `port` and `token` from `config/lensbridge.json` into
+  `config/agentlink.json`, so your MCP client keeps working. From then on the token lives in `config/agentlink.json`.
+- Same tool names (`status`, `capture_orbit`, ...). On Agentlink they also answer to `lensbridge.<tool>`.
+- Alt+C opens the Camera Manager on Agentlink's address.
+- Extra tools from Agentlink itself: `list_capabilities` (every mod plugged in) and `poll_events`.
+
 ---
 
 ## Tools
@@ -99,7 +113,7 @@ curl -H "Authorization: Bearer $T" http://127.0.0.1:25599/api/          # list t
 | | `wait` | ticks / frames / milliseconds |
 | Act | `command` / `chat` | send a command (no `/` needed) or a chat message |
 | | `look` | absolute yaw/pitch, or look at x/y/z |
-| | `hold_keys` | hold keys for N ticks: `forward back left right jump sneak sprint use attack drop`, or any key mapping id such as a mod hotkey |
+| | `hold_keys` | hold keys for N ticks (at most 1200 = 60 s; released when a screen opens): `forward back left right jump sneak sprint use attack drop`, or any key mapping id such as a mod hotkey |
 | | `press` | tap a key once (click) |
 | | `hotbar` / `close_screen` / `release_inputs` | pick a slot, close GUIs, release everything |
 | Direct | `camera_set` / `camera_look_at` / `camera_release` | free director camera (absolute or player-relative; roll; FOV) |
@@ -146,7 +160,9 @@ Press **Alt+C** in game (or open `http://127.0.0.1:25599/ui#<token>`). Every cam
 
 There are also group enable/disable controls and **Shoot enabled**. Thumbnails render in stealth, so your screen never changes. The same functions are available to AI as `tripod_all`, `tripod_update`, `tripod_nudge`, `tripod_thumbs`, `tripod_preview` and `tripod_set_from_view`.
 
-**Getting out of any camera mode:** press **Esc** (or Backspace) in game. It cancels an edit, lands the drone, or leaves a previewed camera, and only opens the pause menu when no camera mode is active. The panel's **Back to my view** button (or the `exit_camera` tool) does the same.
+Cameras belong to the world (server address or singleplayer world folder) and dimension they were placed in; the page, the hotkeys, `/lensbridge cameras` and the props show only the current one's. Cameras saved by older versions have no world on record and show everywhere. The page reloads its cards by itself when cameras change in game.
+
+**Getting out of any camera mode:** press **Esc** (or Backspace) in game. It cancels an edit, lands the drone, or leaves a previewed camera, and only opens the pause menu when no camera mode is active. The panel's **Back to my view** button (or the `exit_camera` tool) does the same, and also releases a director camera that was active but hidden. `restore` (tool) or `/lensbridge restore` puts back what `scene` and `window_size` changed: world freeze, the `advance_time` gamerule, shaders, window size / fullscreen.
 
 ### In-game camera controls (for players)
 
@@ -154,8 +170,10 @@ There are also group enable/disable controls and **Shoot enabled**. Thumbnails r
 |---|---|
 | **Alt+D** | Fly the drone: WASD fly, Space/Shift up/down, Sprint fast, mouse = yaw + gimbal. Your player stays put. Alt+D lands. |
 | **Alt+T** | Place a tripod at the current view |
+| **Alt+X** | Remove a camera: the one you look through, else one right where you are, else the one you look at (with a clear line to it), else the nearest within 5 blocks. `/lensbridge cameras` lists them with remove buttons; `/lensbridge cameras undo` restores the last removal |
 | **Alt+N** | Cycle through tripod views, then back to you |
-| **Alt+R** | Start/stop recording (30 fps, HUD hidden) → MP4 in `lensbridge/videos/` |
+| **Alt+R** | Start/stop recording what you see (30 fps, HUD as it is: press F1 first for a clean video) → MP4 in `lensbridge/videos/` |
+| **Alt+Backspace** | Panic key: stops any running capture, render or recording, shows the HUD, releases the camera and held keys. `/lensbridge restore` undoes scene changes |
 | **Alt+C** | Open the Camera Manager in your browser |
 | **Alt+P** | Show or hide your cameras as props in the world (your shots stay clean) |
 
@@ -219,7 +237,10 @@ camera_release {}
 - The director camera only shows chunks the player has loaded. For far shots, move the player too (spectator + `/tp`).
 - The capture resolution is the window size. Use `window_size` for 1080p, 1440p or 4K-wide windows.
 - `command`, `scene` and other world changes need op on the server.
-- **Multiplayer manners:** on a server, free cameras (they see through walls) need operator status or spectator mode, and tools that act as the player (`look`, `hold_keys`, `press`, `hotbar`, `chat`, `command`, `screen_*`) need operator status. Singleplayer is unrestricted. A server that installs Lensbridge sets its own rules in `config/lensbridge-server.toml` (`freeCameras`, `aiControl`: OPS / EVERYONE / NOBODY) and permission mods can use the nodes `lensbridge.free_cameras` and `lensbridge.ai_control`. See the user guide, "Playing on servers".
+- One capture sequence runs at a time (screenshot, thumbnails, stills, renders, recordings). A second one waits up to 30 s, then returns "Another capture is running".
+- The token is accepted in the `Authorization` header only; `?token=` works on `/file` alone (pictures and videos in the Camera Manager). Output `name` arguments are reduced to `[A-Za-z0-9_.-]`. A malformed JSON body gets HTTP 400.
+- `command` and `chat` refuse `agentlink confirm` / `agentlink cancel`, and `screen_click` does not click in the chat screen: a person confirms Agentlink actions in game.
+- **Multiplayer manners:** on a server, free cameras (they see through walls) need operator status or spectator mode, and tools that act as the player (`look`, `hold_keys`, `press`, `hotbar`, `chat`, `command`, `screen_*`, and the ones that send commands for a shoot: `scene`, `multicam`, `stage_*`, captures with `world` = sync / frozen / step) need operator status. Singleplayer is unrestricted. A server that installs Lensbridge sets its own rules in `config/lensbridge-server.toml` (`freeCameras`, `aiControl`: OPS / EVERYONE / NOBODY) and permission mods can use the nodes `lensbridge.free_cameras` and `lensbridge.ai_control`. See the user guide, "Playing on servers".
 - If the game window is minimised, nothing renders and captures time out.
 
 See [ROADMAP.md](ROADMAP.md) for what's next.

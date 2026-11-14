@@ -213,6 +213,7 @@ public final class CinemaTools {
                     double secs = a.num("seconds", p.duration() > 0 ? p.duration() : 6);
                     int frames = Math.max(2, (int) Math.round(secs * fps));
                     String world = a.has("tick_step") && a.i("tick_step", 0) > 0 ? "step" : a.str("world", "sync");
+                    Capture.lock();   // one capture at a time, pre-roll included (see Capture.lock)
                     try {
                         // pre-roll: park the move at t=0 and let a few frames render, so programs that restart on a
                         // time jump (drone physics) have reset before frame 0 is captured
@@ -225,10 +226,11 @@ public final class CinemaTools {
                         } finally {
                             com.dreadedzombie.lensbridge.Stealth.end();
                         }
-                        return Rendering.render(a.str("name", "move_" + Capture.stamp()), fps, frames,
+                        return Rendering.render(Capture.safeName(a.str("name", "move_" + Capture.stamp())), fps, frames,
                                 i -> DirectorCamera.manualTime = (double) i / fps, world, a.bool("hide_hud", true), a.bool("gif", false));
                     } finally {
                         DirectorCamera.manualTime = null;
+                        Capture.unlock();
                     }
 
                 }));

@@ -5,5 +5,7 @@
   "key.lensbridge.cycle": "Cycle tripod views",
   "key.lensbridge.record": "Start/stop recording",
   "key.lensbridge.manager": "Open camera manager (browser)",
-  "key.lensbridge.props": "Show/hide cameras in the world"
+  "key.lensbridge.props": "Show/hide cameras in the world",
+  "key.lensbridge.remove": "Remove the camera you look at or stand by",
+  "key.lensbridge.panic": "Stop captures and give me my view back"
 }

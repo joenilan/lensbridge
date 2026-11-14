@@ -9,6 +9,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 /** Holds game keys down for a number of client ticks (movement, jump, sneak, sprint, use, attack). */
 public final class InputDriver {
     private static final Map<String, Integer> HELD = new HashMap<>();
+    /** Longest hold: 60 s. A typo like {"forward":1000000} must not walk the player around for hours. */
+    public static final int MAX_TICKS = 1200;
 
     private InputDriver() {
     }
@@ -50,7 +52,7 @@ public final class InputDriver {
             HELD.remove(name);
             k.setDown(false);
         } else {
-            HELD.put(name, ticks);
+            HELD.put(name, Math.min(ticks, MAX_TICKS));
             k.setDown(true);
         }
     }
@@ -72,6 +74,13 @@ public final class InputDriver {
             key(name).setDown(false);
         }
         HELD.clear();
+    }
+
+    /** A screen opened (inventory, chat, a menu): held keys would keep acting behind it, so let go. */
+    static void onScreenOpening(net.neoforged.neoforge.client.event.ScreenEvent.Opening event) {
+        if (event.getNewScreen() != null && !HELD.isEmpty()) {
+            releaseAll();
+        }
     }
 
     public static boolean busy() {

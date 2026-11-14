@@ -35,10 +35,29 @@ public final class BridgeConfig {
         try {
             if (Files.exists(file)) {
                 config = GSON.fromJson(Files.readString(file), BridgeConfig.class);
+                if (config == null) {
+                    // an empty file parses to null (a crash mid-write, a full disk): that used to stop the mod loading
+                    throw new IllegalStateException("the file is empty");
+                }
             }
         } catch (IOException | RuntimeException e) {
-            Lensbridge.LOGGER.warn("Lensbridge: could not read {}, using defaults", file, e);
+            Lensbridge.LOGGER.warn("Lensbridge: could not read {}, using defaults (the old file is kept as {}.broken)",
+                    file, file.getFileName(), e);
+            try {
+                Files.copy(file, file.resolveSibling(file.getFileName() + ".broken"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException | RuntimeException copy) {
+                Lensbridge.LOGGER.warn("Lensbridge: could not keep a copy of the unreadable config", copy);
+            }
             config = new BridgeConfig();
+        }
+        if (config.host == null || config.host.isBlank()) {
+            config.host = "127.0.0.1";
+        }
+        if (config.captureDir == null || config.captureDir.isBlank()) {
+            config.captureDir = "lensbridge";
+        }
+        if (config.ffmpeg == null || config.ffmpeg.isBlank()) {
+            config.ffmpeg = "ffmpeg";
         }
         if (config.token == null || config.token.isBlank()) {
             byte[] bytes = new byte[24];
@@ -47,7 +66,14 @@ public final class BridgeConfig {
         }
         try {
             Files.createDirectories(file.getParent());
-            Files.writeString(file, GSON.toJson(config));
+            // temp file + move: a crash mid-write can't leave an empty config (and with it a lost token)
+            Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.writeString(tmp, GSON.toJson(config));
+            try {
+                Files.move(tmp, file, java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             Lensbridge.LOGGER.warn("Lensbridge: could not write {}", file, e);
         }

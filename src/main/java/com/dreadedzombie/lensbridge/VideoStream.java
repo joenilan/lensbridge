@@ -23,11 +23,13 @@ public final class VideoStream implements AutoCloseable {
     private ByteBuffer buffer;
     private byte[] last;
     private int frames;
+    private final int fps;
 
     public VideoStream(Path file, int width, int height, int fps) {
         this.file = file;
         this.width = width;
         this.height = height;
+        this.fps = fps;
         List<String> cmd = List.of(Lensbridge.config().ffmpeg, "-y", "-loglevel", "error",
                 "-f", "rawvideo", "-pix_fmt", "rgba", "-s", width + "x" + height, "-r", String.valueOf(fps), "-i", "-",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "17", "-preset", "veryfast",
@@ -92,6 +94,15 @@ public final class VideoStream implements AutoCloseable {
             if (!this.process.waitFor(5, TimeUnit.MINUTES) || this.process.exitValue() != 0) {
                 throw new RuntimeException("ffmpeg failed while encoding " + this.file);
             }
+            com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+            e.addProperty("file", this.file.toString());
+            e.addProperty("name", this.file.getFileName().toString());
+            e.addProperty("frames", this.frames);
+            e.addProperty("fps", this.fps);
+            e.addProperty("seconds", this.fps > 0 ? Math.round(this.frames * 100.0 / this.fps) / 100.0 : 0);
+            e.addProperty("width", this.width);
+            e.addProperty("height", this.height);
+            com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.publish("lensbridge.video_saved", e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (InterruptedException e) {

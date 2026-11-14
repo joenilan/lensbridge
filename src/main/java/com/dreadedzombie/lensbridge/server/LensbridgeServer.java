@@ -5,6 +5,10 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.InterModComms;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.event.lifecycle.InterModEnqueueEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -47,32 +51,63 @@ public final class LensbridgeServer {
                     "menus, chat and run commands (commands still need their normal permissions). OPS, EVERYONE or NOBODY.",
                     "Permission node: lensbridge.ai_control.")
             .defineEnum("aiControl", Who.OPS);
+    public static final ModConfigSpec.EnumValue<Who> SERVER_AGENT = B
+            .comment("Who may use this server's tools from their own AI assistant (needs Agentlink on the server; the player",
+                    "runs Lensbridge, the calls travel over their game connection): OPS, EVERYONE or NOBODY. They get",
+                    "serverAgentLevel below: server health and lag, players and inventories, the modpack's items and recipes,",
+                    "live events, and (moderate/admin) moderation.",
+                    "Every call is written to agentlink/audit.log under the player's name. A permission mod can give a player",
+                    "\"none\", \"read\", \"moderate\" or \"admin\" with the node lensbridge.server_agent (string).")
+            .defineEnum("serverAgent", Who.OPS);
+    public enum Level { READ, MODERATE, ADMIN }
+    public static final ModConfigSpec.EnumValue<Level> SERVER_AGENT_LEVEL = B
+            .comment("What those players' AI may do: READ (look only), MODERATE (also message, broadcast, mute, kick,",
+                    "whitelist) or ADMIN (also ban - a person always confirms a ban in game - and unban).",
+                    "A permission mod's lensbridge.server_agent value overrides this per player.")
+            .defineEnum("serverAgentLevel", Level.READ);
     public static final ModConfigSpec SPEC = B.build();
 
     public static final PermissionNode<Boolean> CAMERAS_NODE = new PermissionNode<>(MODID, "free_cameras",
             PermissionTypes.BOOLEAN, (player, uuid, ctx) -> allowed(CAMERAS.get(), player, true));
     public static final PermissionNode<Boolean> CONTROL_NODE = new PermissionNode<>(MODID, "ai_control",
             PermissionTypes.BOOLEAN, (player, uuid, ctx) -> allowed(CONTROL.get(), player, false));
+    public static final PermissionNode<String> AGENT_NODE = new PermissionNode<>(MODID, "server_agent",
+            PermissionTypes.STRING, (player, uuid, ctx) -> allowed(SERVER_AGENT.get(), player, false)
+                    ? SERVER_AGENT_LEVEL.get().name().toLowerCase(java.util.Locale.ROOT) : "none");
 
     /** Last rule sent to each player, so changes (op/deop, gamemode, permission edits) are pushed within seconds. */
     private static final Map<UUID, Integer> SENT = new HashMap<>();
 
-    public LensbridgeServer(IEventBus modBus, ModContainer container) {
+    public LensbridgeServer(IEventBus modBus, ModContainer container, Dist dist) {
         // SYNCED is 26.x's name for the per-world server config; keep the old file name so existing configs and the
         // docs ("lensbridge-server.toml") still apply (the default would now be "lensbridge-synced.toml")
         container.registerConfig(ModConfig.Type.SYNCED, SPEC, "lensbridge-server.toml");
         modBus.addListener(LensbridgeServer::registerPayloads);
-        NeoForge.EVENT_BUS.addListener((PermissionGatherEvent.Nodes e) -> e.addNodes(CAMERAS_NODE, CONTROL_NODE));
+        NeoForge.EVENT_BUS.addListener((PermissionGatherEvent.Nodes e) -> e.addNodes(CAMERAS_NODE, CONTROL_NODE, AGENT_NODE));
+        if (dist.isDedicatedServer() && ModList.get().isLoaded("agentlink")) {
+            // link to the server's Agentlink to relay its tools to staff (on a client, the client's Lensbridge links)
+            String version = container.getModInfo().getVersion().toString();
+            modBus.addListener((InterModEnqueueEvent e) ->
+                    InterModComms.sendTo(MODID, "agentlink", "register_provider", () -> AgentRelay.serverProvider(version)));
+        }
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer p) {
                 SENT.remove(p.getUUID());
                 send(p);
+                AgentRelay.forget(p.getUUID());
+                AgentRelay.sync(p);
             }
         });
-        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> SENT.remove(e.getEntity().getUUID()));
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
+            SENT.remove(e.getEntity().getUUID());
+            AgentRelay.forget(e.getEntity().getUUID());
+        });
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post e) -> {
             if (e.getServer().getTickCount() % 40 == 0) {
-                e.getServer().getPlayerList().getPlayers().forEach(LensbridgeServer::send);
+                e.getServer().getPlayerList().getPlayers().forEach(p -> {
+                    send(p);
+                    AgentRelay.sync(p);
+                });
             }
         });
     }
@@ -82,7 +117,9 @@ public final class LensbridgeServer {
                 ctx.enqueueWork(() -> {
                     ServerRules.cameras = payload.cameras();
                     ServerRules.control = payload.control();
-                }));
+                }))
+                .playToClient(AgentDown.TYPE, AgentDown.CODEC, (payload, ctx) -> ServerAgent.onDown(payload))
+                .playToServer(AgentUp.TYPE, AgentUp.CODEC, AgentRelay::onCall);
     }
 
     static boolean allowed(Who who, ServerPlayer player, boolean spectatorsToo) {

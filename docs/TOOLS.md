@@ -96,7 +96,7 @@ Turn the player's head: absolute yaw/pitch, or look at a world position.
 
 ### `hold_keys`
 
-Hold movement/action keys for a number of ticks (20 = 1 s), e.g. {"keys":{"forward":40,"jump":5}}. Keys: forward back left right jump sneak sprint use attack drop, or any key mapping id (e.g. key.mothlight.glide_drop).
+Hold movement/action keys for a number of ticks (20 = 1 s; at most 1200 = 60 s; all are released when a screen opens), e.g. {"keys":{"forward":40,"jump":5}}. Keys: forward back left right jump sneak sprint use attack drop, or any key mapping id (e.g. key.mothlight.glide_drop).
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
@@ -131,7 +131,7 @@ Release every held key and return the camera to the player.
 
 ### `scene`
 
-Stage a scene with one call (sends commands; needs op): time, weather, freeze the world (/tick freeze) so everything holds still for shots, step frozen ticks, clear the weather/time cycle.
+Stage a scene with one call (sends commands; needs op): time, weather, freeze the world (/tick freeze) so everything holds still for shots, step frozen ticks, clear the weather/time cycle. The freeze, the advance_time gamerule and shaders stay as you set them: call restore when you are done to put them back as they were.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
@@ -153,7 +153,7 @@ Show or hide the HUD (like F1).
 
 ### `window_size`
 
-Resize the game window (e.g. 1920x1080 for promo captures). Captures use the window resolution.
+Resize the game window (e.g. 1920x1080 for promo captures; leaves fullscreen). Captures use the window resolution. The size from before is remembered: call restore when you are done to put it back.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
@@ -206,7 +206,11 @@ Return to the normal player camera.
 
 ### `exit_camera`
 
-Return the player to their own view from any camera mode (edit -> cancel, drone -> land, preview -> off). Same as pressing Esc in game.
+Return the player to their own view from any camera mode (edit -> cancel, drone -> land, preview -> off) and release the director camera even when it was hidden. Like Esc in game, plus the hidden camera.
+
+### `restore`
+
+Put back the lasting things Lensbridge changed for a shoot: unfreeze the world if scene froze it, the advance_time gamerule to its value from before, shaders as they were, and the window's size / fullscreen from before window_size. Call it when you are done (after exit_camera). Time of day and weather are not put back. Sends commands (needs op for the freeze and the gamerule). In game: /lensbridge restore.
 
 ## Cinematic moves
 
@@ -375,11 +379,20 @@ Place a ring of tripods around a subject in one go (e.g. 4 or 6 angles), all aim
 
 ### `tripod_list`
 
-List tripods.
+List the tripods of the world and dimension the player is in (all=true: every world).
+
+| Argument | Type | Required | Notes |
+|---|---|---|---|
+| `all` | boolean |  | Every world and dimension (default false) |
 
 ### `tripod_all`
 
-All tripods as JSON (name, group, x, y, z, yaw, pitch, fov, enabled, track, has_thumb).
+The tripods of the world and dimension the player is in, as JSON (name, group, x, y, z, yaw, pitch, fov, enabled, track, world, dimension, has_thumb), plus a signature that changes when anything listed changes. all=true lists the cameras of every world.
+
+| Argument | Type | Required | Notes |
+|---|---|---|---|
+| `all` | boolean |  | Every world and dimension, not only the current one (default false) |
+| `signature_only` | boolean |  | Only the signature and edit state (cheap, for polling) |
 
 ### `tripod_update`
 
@@ -415,7 +428,7 @@ Nudge a tripod relative to its own view: forward/right/up in blocks, yaw/pitch/f
 
 ### `tripod_set_from_view`
 
-Store the current view (director camera if active, else the player's eyes) into a tripod (creates it if missing). Fly the drone (K) or look around, then save the angle you like.
+Store what is on the player's screen (a camera they are previewing or flying, else their own eyes) into an EXISTING tripod; a hidden capture camera is not their view. Fails if the tripod doesn't exist (use tripod_place to make one). Fly the drone (Alt+D) or look around, then save the angle you like.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
@@ -464,7 +477,7 @@ Look through a tripod (live).
 
 ### `tripod_remove`
 
-Remove a tripod, a whole group (name prefix before the first _ ), or all.
+Remove a tripod by name, a whole group (name prefix before the first _ ), or all. Group and all only touch the current world and dimension unless everywhere=true (argument `everywhere`, boolean).
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|

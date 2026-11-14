@@ -128,7 +128,7 @@ public final class Game {
     }
 
     static void onFrame(RenderFrameEvent.Post event) {
-        DirectorCamera.frameDone();
+        DirectorCamera.frameDone(event.getPartialTick().getGameTimeDeltaPartialTick(true));
         synchronized (FRAME_WAITS) {
             frames++;
             for (Iterator<FrameWait> it = FRAME_WAITS.iterator(); it.hasNext(); ) {
@@ -138,6 +138,13 @@ public final class Game {
                     it.remove();
                 }
             }
+        }
+    }
+
+    /** Something is waiting for frames to be drawn. Any thread. */
+    public static boolean waiting() {
+        synchronized (FRAME_WAITS) {
+            return !FRAME_WAITS.isEmpty();
         }
     }
 
