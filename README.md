@@ -232,6 +232,28 @@ camera_release {}
 
 ---
 
+## For other mods: `LensbridgeClient`
+
+A small client-side API, stable from 0.6.2, for mods that draw things attached to the player (a creature on the
+shoulder, a backpack, a pet that follows the player's position). While a capture leaves the player out of the picture
+(`hide_player`), draw those out too:
+
+```java
+// no compile dependency: guard with ModList.get().isLoaded("lensbridge"), look the method up once, keep it
+Method hidden = Class.forName("com.dreadedzombie.lensbridge.api.LensbridgeClient")
+        .getMethod("isPlayerHidden", Player.class);
+// in your renderer's shouldRender:
+if ((boolean) hidden.invoke(null, owner)) return false;
+```
+
+| Method | True while |
+|---|---|
+| `static boolean isPlayerHidden(Player player)` | a capture is hiding this player (only ever the local player) |
+| `static boolean isEntityHidden(Entity entity)` | a capture is hiding this entity: the hidden player, or anything riding them |
+
+Both are cheap enough to call every frame, on the render thread. A missing class or method (older Lensbridge) means
+"not hidden".
+
 ## Limits
 
 - The director camera only shows chunks the player has loaded. For far shots, move the player too (spectator + `/tp`).

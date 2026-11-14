@@ -166,6 +166,14 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 - [ ] With no world open, `tripod_list` still lists cameras
 - [ ] `restore` does not put back time of day or weather; a freeze made by `stage_build` is undone by `stage_clear`, not `restore`
 
+## 0.6.2
+
+- [x] Public client API `api.LensbridgeClient` (`isPlayerHidden(Player)`, `isEntityHidden(Entity)`), asked for by the
+      insect-family thread: Twiglight's shoulder Spectre floated where the hidden player's shoulder was. hide_player
+      also hides anything riding the player now. Tested 2026-11-14 offline: a player on a pig is hidden, the pig
+      stays. Not run: a real passenger on the player (vanilla can't put one there), the API called from another mod
+- [ ] Carry to mc/26.3
+
 ## 0.6.1
 
 - [x] `hide_player` on every capture tool (owner's request, 2026-11-14: "maybe hide me when screenshotting or using
