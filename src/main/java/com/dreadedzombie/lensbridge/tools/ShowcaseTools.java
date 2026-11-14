@@ -299,7 +299,7 @@ public final class ShowcaseTools {
                     synchronized (STAGE) {
                         STAGE.clear();
                         STAGE.addAll(placed);
-                        stageName = ns;
+                        stageName = Capture.safeName(ns);   // it becomes a folder name
                         stageBox = new AABB(ox, oy, z0, x1, y1, z1);
                         stageForce = force;
                     }
@@ -335,13 +335,6 @@ public final class ShowcaseTools {
                     }
                     List<Path> shots = new ArrayList<>();
                     StringBuilder md = new StringBuilder("# " + stageName + " showcase\n\n");
-                    boolean wasActive = DirectorCamera.active;
-                    boolean hud = Game.call(() -> Game.mc().options.hideGui);
-                    boolean shadows = Game.call(() -> Game.mc().options.entityShadows().get());
-                    Game.run(() -> {
-                        Game.mc().options.hideGui = true;
-                        Game.mc().options.entityShadows().set(false);   // floating exhibits don't need a shadow far below
-                    });
                     // every mob on the stage, so each shot can hide the others (see Solo)
                     java.util.Map<Exhibit, Integer> mobIds = new java.util.HashMap<>();
                     for (Exhibit e : list) {
@@ -352,8 +345,23 @@ public final class ShowcaseTools {
                             }
                         }
                     }
+                    Capture.lock();   // one capture at a time (see Capture.lock); released after the stills
+                    boolean wasActive = DirectorCamera.active;
+                    boolean hud;
+                    boolean shadows;
+                    try {
+                        hud = Game.call(() -> Game.mc().options.hideGui);
+                        shadows = Game.call(() -> Game.mc().options.entityShadows().get());
+                    } catch (RuntimeException e) {
+                        Capture.unlock();
+                        throw e;
+                    }
                     Stealth.begin();
                     try {
+                        Game.run(() -> {
+                            Game.mc().options.hideGui = true;
+                            Game.mc().options.entityShadows().set(false);   // floating exhibits don't need a shadow far below
+                        });
                         for (Exhibit e : list) {
                             java.util.Set<Integer> others = new java.util.HashSet<>(mobIds.values());
                             others.remove(mobIds.get(e));
@@ -398,14 +406,19 @@ public final class ShowcaseTools {
                                     .append(e.label()).append("](").append(out.getFileName()).append(")\n\n");
                         }
                     } finally {
+                        // each restore runs whatever the others do
                         com.dreadedzombie.lensbridge.cinema.Solo.clear();
                         Stealth.end();
-                        Game.run(() -> {
-                            Game.mc().options.hideGui = hud;
-                            Game.mc().options.entityShadows().set(shadows);
-                        });
-                        if (!wasActive) {
-                            DirectorCamera.release();
+                        try {
+                            Game.run(() -> {
+                                Game.mc().options.hideGui = hud;
+                                Game.mc().options.entityShadows().set(shadows);
+                            });
+                        } finally {
+                            if (!wasActive) {
+                                DirectorCamera.release();
+                            }
+                            Capture.unlock();
                         }
                     }
                     List<String> orbits = new ArrayList<>();

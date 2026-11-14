@@ -61,6 +61,21 @@ public final class Tools {
         return fmt(v.x) + " " + fmt(v.y) + " " + fmt(v.z);
     }
 
+    private static final java.util.regex.Pattern AGENTLINK_CONFIRM =
+            java.util.regex.Pattern.compile("agentlink\\s+(confirm|cancel)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Agentlink asks a PERSON to confirm dangerous actions (a ban, a rollback) with /agentlink confirm <code>. An AI
+     * that could send that text itself would be approving its own request, so it is refused anywhere in a command or
+     * chat line (with or without a slash, inside "execute ... run", as agentlink:agentlink ...).
+     */
+    static void refuseAgentlinkConfirm(String text) {
+        if (text != null && AGENTLINK_CONFIRM.matcher(text).find()) {
+            throw new IllegalArgumentException("Not sent: \"agentlink confirm\" / \"agentlink cancel\" is the person's decision. "
+                    + "A person has to click Confirm (or Cancel) in game; ask them to.");
+        }
+    }
+
     private static int previewEdge() {
         return Lensbridge.config().previewMaxEdge;
     }
@@ -78,7 +93,7 @@ public final class Tools {
                         .prop("settle_frames", "integer", "Frames to wait before capture (default 3)")
                         .prop("preview_size", "integer", "Longest edge of the returned preview (default from config)").build(),
                 a -> {
-                    Path file = Capture.dir("screenshots").resolve(a.str("name", "shot_" + Capture.stamp()) + ".png");
+                    Path file = Capture.dir("screenshots").resolve(Capture.safeName(a.str("name", "shot_" + Capture.stamp())) + ".png");
                     Capture.grabClean(file, a.bool("hide_hud", false), a.i("settle_frames", 3));
                     return Result.text("Saved " + file).addImage(file, a.i("preview_size", previewEdge()));
                 }));
@@ -123,6 +138,7 @@ public final class Tools {
                 new Schema().req("command", "string", "e.g. 'time set midnight'").build(),
                 a -> {
                     String cmd = a.str("command").replaceFirst("^/", "");
+                    refuseAgentlinkConfirm(cmd);
                     long before = ChatLog.since(Long.MAX_VALUE - 1).size();
                     Game.run(() -> player().connection.sendCommand(cmd));
                     Game.sleep(250);
@@ -132,6 +148,7 @@ public final class Tools {
         s.register(new Tool("chat", "Send a chat message as the player.",
                 new Schema().req("message", "string", "Message text").build(),
                 a -> {
+                    refuseAgentlinkConfirm(a.str("message"));
                     Game.run(() -> player().connection.sendChat(a.str("message")));
                     return Result.text("sent");
                 }));
@@ -164,7 +181,8 @@ public final class Tools {
                     return Result.text(msg);
                 }));
 
-        s.register(new Tool("hold_keys", "Hold movement/action keys for a number of ticks (20 = 1 s), e.g. "
+        s.register(new Tool("hold_keys", "Hold movement/action keys for a number of ticks (20 = 1 s; at most 1200 = 60 s; all "
+                + "are released when a screen opens), e.g. "
                 + "{\"keys\":{\"forward\":40,\"jump\":5}}. Keys: forward back left right jump sneak sprint use attack drop, or any key mapping id (e.g. key.mothlight.glide_drop).",
                 new Schema().req("keys", "object", "Map of key -> ticks to hold (0 releases)")
                         .prop("wait", "boolean", "Block until all keys are released (default true)").build(),
@@ -216,6 +234,12 @@ public final class Tools {
                     var mc = Game.mc();
                     if (mc.screen == null) {
                         throw new IllegalStateException("No screen open");
+                    }
+                    if (mc.screen instanceof net.minecraft.client.gui.screens.ChatScreen) {
+                        // chat lines can carry click actions, among them Agentlink's [Confirm] for a ban or a rollback:
+                        // that click is the person's decision (see refuseAgentlinkConfirm)
+                        throw new IllegalStateException("screen_click doesn't click in the chat screen: links and buttons in "
+                                + "chat (such as Agentlink's Confirm) are for the person to click.");
                     }
                     double scale = mc.getWindow().getGuiScale();
                     double gx = a.num("x") / scale;
@@ -304,15 +328,21 @@ public final class Tools {
                     return Result.text("HUD " + (a.bool("visible", true) ? "shown" : "hidden"));
                 }));
 
-        s.register(new Tool("window_size", "Resize the game window (e.g. 1920x1080 for promo captures). Captures use the window resolution.",
+        s.register(new Tool("window_size", "Resize the game window (e.g. 1920x1080 for promo captures; leaves fullscreen). Captures "
+                + "use the window resolution. The size from before is remembered: call restore when you are done to put it back.",
                 new Schema().req("width", "integer", "").req("height", "integer", "").build(), a -> {
-                    Game.run(() -> mc().getWindow().setWindowed(a.i("width", 1280), a.i("height", 720)));
+                    Game.run(() -> {
+                        com.dreadedzombie.lensbridge.Restore.noteWindow();
+                        mc().getWindow().setWindowed(a.i("width", 1280), a.i("height", 720));
+                    });
                     Game.waitFrames(5);
                     return Result.text("Window " + Game.call(() -> mc().getWindow().getWidth() + "x" + mc().getWindow().getHeight()));
                 }));
 
         s.register(new Tool("scene", "Stage a scene with one call (sends commands; needs op): time, weather, freeze the "
-                + "world (/tick freeze) so everything holds still for shots, step frozen ticks, clear the weather/time cycle.",
+                + "world (/tick freeze) so everything holds still for shots, step frozen ticks, clear the weather/time cycle. "
+                + "The freeze, the advance_time gamerule and shaders stay as you set them: call restore when you are done to "
+                + "put them back as they were.",
                 new Schema().prop("look", "string", "Lighting preset: qa (shaders off, morning light, clear - honest neutral look), "
                         + "noon, golden (low warm sun), sunset, blue_hour, night, dawn, overcast")
                         .prop("shaders", "boolean", "Iris shaders on/off (if Iris is installed)")
@@ -340,11 +370,17 @@ public final class Tools {
                         cmds.add("weather " + preset[1]);
                         cmds.add("gamerule advance_time false");
                         if (preset[2] != null && !a.has("shaders")) {
-                            extra.append(Game.call(() -> com.dreadedzombie.lensbridge.Shaders.set(false))).append("; ");
+                            extra.append(Game.call(() -> {
+                                com.dreadedzombie.lensbridge.Restore.noteShaders();
+                                return com.dreadedzombie.lensbridge.Shaders.set(false);
+                            })).append("; ");
                         }
                     }
                     if (a.has("shaders")) {
-                        extra.append(Game.call(() -> com.dreadedzombie.lensbridge.Shaders.set(a.bool("shaders", true)))).append("; ");
+                        extra.append(Game.call(() -> {
+                            com.dreadedzombie.lensbridge.Restore.noteShaders();
+                            return com.dreadedzombie.lensbridge.Shaders.set(a.bool("shaders", true));
+                        })).append("; ");
                     }
                     if (a.has("time")) {
                         cmds.add("time set " + a.str("time"));
@@ -357,6 +393,23 @@ public final class Tools {
                     }
                     if (a.has("freeze")) {
                         cmds.add(a.bool("freeze", true) ? "tick freeze" : "tick unfreeze");
+                        com.dreadedzombie.lensbridge.Restore.noteFreeze(a.bool("freeze", true), Rendering.worldFrozen());
+                    }
+                    // remembered for `restore`: what the gamerule was before the first time Lensbridge changes it. A client
+                    // can't read a server's gamerules, so ask the game and read its answer from the chat log.
+                    if (cmds.stream().anyMatch(c -> c.startsWith("gamerule advance_time "))
+                            && !com.dreadedzombie.lensbridge.Restore.advanceTimeKnown()) {
+                        long mark = ChatLog.since(0).stream().mapToLong(ChatLog.Line::id).max().orElse(0);
+                        Game.run(() -> player().connection.sendCommand("gamerule advance_time"));
+                        Game.sleep(300);
+                        boolean before = true;   // the game's default, if the answer can't be read
+                        for (ChatLog.Line line : ChatLog.since(mark)) {
+                            String t = line.text().toLowerCase(Locale.ROOT);
+                            if (t.contains("advance_time") && (t.endsWith("true") || t.endsWith("false"))) {
+                                before = t.endsWith("true");
+                            }
+                        }
+                        com.dreadedzombie.lensbridge.Restore.noteAdvanceTime(before);
                     }
                     if (a.has("step")) {
                         cmds.add("tick step " + a.i("step", 1));
@@ -399,8 +452,9 @@ public final class Tools {
                             throw new IllegalArgumentException("Target not found");
                         }
                         if (tg.entityId() >= 0 && a.bool("auto_center", true)) {
-                            boolean wasActive = DirectorCamera.active;
                             com.dreadedzombie.lensbridge.cinema.AutoFrame.Result m;
+                            Capture.lock();   // one capture at a time (see Capture.lock)
+                            boolean wasActive = DirectorCamera.active;
                             com.dreadedzombie.lensbridge.Stealth.begin();
                             try {
                                 m = com.dreadedzombie.lensbridge.cinema.AutoFrame.measure(tg.entityId(), c, 6);
@@ -409,6 +463,7 @@ public final class Tools {
                                 if (!wasActive) {
                                     DirectorCamera.release();
                                 }
+                                Capture.unlock();
                             }
                             c = m.centre();
                             autoNote = m.note();
@@ -438,7 +493,7 @@ public final class Tools {
                         float[] yp = DirectorCamera.lookAt(cam, c);
                         shots.add(new Shot(cam, yp[0], yp[1], 0, fov));
                     }
-                    Result res = render(shots, a.str("name", "orbit_" + Capture.stamp()), a.i("fps", 30), a.bool("gif", false),
+                    Result res = render(shots, Capture.safeName(a.str("name", "orbit_" + Capture.stamp())), a.i("fps", 30), a.bool("gif", false),
                             a.bool("hide_hud", true), a.str("world", "sync"));
                     return autoNote.isEmpty() ? res : res.prependText(autoNote);
                 }));
@@ -464,7 +519,7 @@ public final class Tools {
                         }
                         shots.add(path.sample(t));
                     }
-                    return render(shots, a.str("name", "path_" + Capture.stamp()), fps, a.bool("gif", false), a.bool("hide_hud", true),
+                    return render(shots, Capture.safeName(a.str("name", "path_" + Capture.stamp())), fps, a.bool("gif", false), a.bool("hide_hud", true),
                             a.str("world", "sync"));
                 }));
 
@@ -474,7 +529,7 @@ public final class Tools {
                         .prop("timelapse_interval", "number", "Only for timelapses: seconds of game time between frames (e.g. 2)")
                         .prop("name", "string", "Output name").prop("hide_hud", "boolean", "default false")
                         .prop("gif", "boolean", "Also make a GIF").build(),
-                a -> Rendering.record(a.str("name", (a.num("timelapse_interval", 0) > 0 ? "timelapse_" : "clip_") + Capture.stamp()),
+                a -> Rendering.record(Capture.safeName(a.str("name", (a.num("timelapse_interval", 0) > 0 ? "timelapse_" : "clip_") + Capture.stamp())),
                         a.i("fps", 30), a.num("seconds", 5), a.num("timelapse_interval", 0), a.bool("hide_hud", false),
                         a.bool("gif", false), () -> true)));
 
@@ -499,6 +554,7 @@ public final class Tools {
 
     /** Render director-camera shots frame by frame (world kept in sync by default). */
     public static Result render(List<Shot> shots, String name, int fps, boolean gif, boolean hideHud, String world) {
+        Capture.lock();   // taken here too, so "was a camera active" is read and restored inside the same capture
         boolean wasActive = DirectorCamera.active;
         try {
             return Rendering.render(name, fps, shots.size(), i -> {
@@ -509,6 +565,7 @@ public final class Tools {
             if (!wasActive) {
                 DirectorCamera.release();
             }
+            Capture.unlock();
         }
     }
 

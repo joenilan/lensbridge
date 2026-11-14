@@ -17,8 +17,18 @@ public final class Stealth {
         return DEPTH.get() > 0 && Lensbridge.config().stealthCapture;
     }
 
+    /** How many captures are in progress (whatever the config says). */
+    public static int depth() {
+        return DEPTH.get();
+    }
+
     public static void begin() {
         DEPTH.incrementAndGet();
+    }
+
+    /** Panic key: nothing is hidden any more, whatever was in progress (later end() calls stop at zero). */
+    public static void reset() {
+        DEPTH.set(0);
     }
 
     public static void end() {

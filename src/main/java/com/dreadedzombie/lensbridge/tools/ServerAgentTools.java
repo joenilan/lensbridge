@@ -65,7 +65,8 @@ public final class ServerAgentTools {
                     body.addProperty("tool", a.str("tool"));
                     body.add("args", a.obj("args"));
                     String json = body.toString();
-                    if (json.length() > AgentUp.MAX_CHARS) {
+                    // counted in UTF-8 bytes, which is what the 32 KiB packet limit counts (non-English text is 2-4 bytes a letter)
+                    if (json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > AgentUp.MAX_BYTES) {
                         return Result.error("Arguments too long to send to the server.");
                     }
                     Map.Entry<Integer, CompletableFuture<JsonObject>> call = ServerAgent.begin();
@@ -101,21 +102,77 @@ public final class ServerAgentTools {
                 }));
     }
 
+    /** Picture-in-picture: keep an eye on a nearby player while the person keeps their own view. */
+    public static void registerInset(BridgeServer s) {
+        s.register(new Tool("inset", "Picture-in-picture: a live camera on another player in a corner of the person's "
+                + "screen while they keep playing their own view (staff keeping an eye on someone). The player must be "
+                + "near (within the person's view range); farther away, use the server's agentlink_watch. Free-camera "
+                + "rules apply. full=true makes that camera the person's whole screen instead (Esc returns them to the "
+                + "small picture). Dark places are lit as with night vision; in a space too tight for a camera it looks "
+                + "through the watched one's eyes. target=\"off\" closes it. In game: /lensbridge inset <player> "
+                + "[chase|front|overhead|eyes] [full], /lensbridge inset full | small | off.",
+                new Schema().req("target", "string", "Player name, or \"off\"")
+                        .prop("mode", "string", "chase (behind, default), front (their face), overhead, or eyes (exactly what they see)")
+                        .prop("full", "boolean", "true: their whole screen shows this camera; false: back to the corner picture")
+                        .prop("fps", "integer", "Pictures per second (1-60, default 30; each one is a hidden extra frame, so the person's own view shows that many fewer)")
+                        .prop("size", "number", "Width as a fraction of the screen (0.15-0.5, default 0.3)")
+                        .prop("corner", "string", "top_right (default), top_left, bottom_right, bottom_left").build(),
+                a -> {
+                    String t = a.str("target");
+                    if (t.equalsIgnoreCase("off")) {
+                        Game.run(com.dreadedzombie.lensbridge.Inset::stop);   // game state: client thread, not this HTTP thread
+                        return Result.text("Inset closed.");
+                    }
+                    Game.call(() -> {
+                        com.dreadedzombie.lensbridge.Inset.start(t, a.str("mode", "chase"), a.i("fps", 30),
+                                (float) a.num("size", 0.3), a.str("corner", "top_right"));
+                        com.dreadedzombie.lensbridge.Inset.setFull(a.bool("full", false));
+                        return null;
+                    });
+                    Game.sleep(1500);
+                    return Result.text("Inset on " + t + ": " + com.dreadedzombie.lensbridge.Inset.status
+                            + ". Save its picture with inset_snapshot.");
+                }));
+        s.register(new Tool("inset_snapshot", "Save the inset's latest picture as a PNG (evidence) and return a preview.",
+                new Schema().prop("name", "string", "File name without .png (default a timestamp)").build(),
+                a -> {
+                    java.nio.file.Path file = com.dreadedzombie.lensbridge.Capture.dir("screenshots")
+                            .resolve(com.dreadedzombie.lensbridge.Capture.safeName(
+                                    a.str("name", "inset_" + com.dreadedzombie.lensbridge.Capture.stamp())) + ".png");
+                    try {
+                        com.dreadedzombie.lensbridge.Inset.snapshot(file);
+                    } catch (java.io.IOException e) {
+                        throw new java.io.UncheckedIOException(e);
+                    }
+                    return Result.text("Saved " + file + " (" + com.dreadedzombie.lensbridge.Inset.status + ")").addImage(file, 800);
+                }));
+    }
+
     /** In-game requests: /agent in the player's chat -> agent_inbox; the answer -> agent_say. */
     public static void registerInbox(BridgeServer s) {
         s.register(new Tool("agent_inbox", "Requests the player typed in game with /agent <request>, oldest first, each "
                 + "with where they are and what they're looking at. Waits up to wait_seconds for the first one, so call it "
                 + "in a loop to LISTEN (the player sees you as listening while you wait). Answer each with agent_say. "
-                + "Requests come from the player at the keyboard, the same person you work for.",
-                new Schema().prop("wait_seconds", "integer", "How long to wait for a request (default 120, max 600; 0 = just check)").build(),
+                + "Requests come from the player at the keyboard, the same person you work for. A request stays in the "
+                + "inbox until you acknowledge it: pass the returned next_ack as ack on your next call, or it is returned "
+                + "again (marked delivery 2, 3).",
+                new Schema().prop("wait_seconds", "integer", "How long to wait for a request (default 120, max 600; 0 = just check)")
+                        .prop("ack", "integer", "The next_ack from your previous call: those requests reached you and are removed").build(),
                 a -> {
                     try {
                         JsonObject out = new JsonObject();
-                        out.add("requests", com.dreadedzombie.lensbridge.AgentInbox.take(
-                                1000L * Math.max(0, Math.min(600, a.i("wait_seconds", 120)))));
-                        out.addProperty("note", out.getAsJsonArray("requests").isEmpty()
-                                ? "No requests yet; call agent_inbox again to keep listening."
-                                : "Answer with agent_say, then call agent_inbox again to keep listening.");
+                        var requests = com.dreadedzombie.lensbridge.AgentInbox.take(
+                                1000L * Math.max(0, Math.min(600, a.i("wait_seconds", 120))), a.i("ack", 0));
+                        out.add("requests", requests);
+                        int nextAck = a.i("ack", 0);
+                        for (JsonElement r : requests) {
+                            nextAck = Math.max(nextAck, r.getAsJsonObject().get("id").getAsInt());
+                        }
+                        out.addProperty("next_ack", nextAck);
+                        out.addProperty("note", requests.isEmpty()
+                                ? "No requests yet; call agent_inbox again (ack=" + nextAck + ") to keep listening."
+                                : "Answer with agent_say, then call agent_inbox again with ack=" + nextAck + " to keep listening "
+                                + "(without ack these requests are returned again).");
                         return Result.text(PRETTY.toJson(out));
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();

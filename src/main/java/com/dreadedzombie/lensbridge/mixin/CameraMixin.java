@@ -24,6 +24,17 @@ public abstract class CameraMixin {
     @Inject(method = "setup", at = @At("TAIL"))
     private void lensbridge$director(Level level, Entity entity, boolean detached, boolean mirror, float partialTick,
                                      CallbackInfo ci) {
+        if (DirectorCamera.restoringPlayerView) {
+            return;   // handing the camera back to the player after a hidden frame: no override
+        }
+        if (com.dreadedzombie.lensbridge.Inset.thisFrame || com.dreadedzombie.lensbridge.Inset.fullFrame) {
+            // a picture-in-picture frame (never shown on screen): the inset camera wins over everything else
+            this.setRotation(com.dreadedzombie.lensbridge.Inset.camYaw, com.dreadedzombie.lensbridge.Inset.camPitch, 0f);
+            this.setPosition(com.dreadedzombie.lensbridge.Inset.camPos);
+            com.dreadedzombie.lensbridge.Inset.poseApplied = true;
+            return;
+        }
+        com.dreadedzombie.lensbridge.Inset.normalFrame();
         if (DirectorCamera.shown()) {
             this.setRotation(DirectorCamera.yaw, DirectorCamera.pitch, DirectorCamera.roll);
             this.setPosition(DirectorCamera.pos);
@@ -33,7 +44,10 @@ public abstract class CameraMixin {
 
     @Inject(method = "isDetached", at = @At("HEAD"), cancellable = true)
     private void lensbridge$detached(CallbackInfoReturnable<Boolean> cir) {
-        if (DirectorCamera.shown()) {
+        if (DirectorCamera.restoringPlayerView) {
+            return;
+        }
+        if (DirectorCamera.shown() || com.dreadedzombie.lensbridge.Inset.thisFrame || com.dreadedzombie.lensbridge.Inset.fullFrame) {
             cir.setReturnValue(true);
         }
     }

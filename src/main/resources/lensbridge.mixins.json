@@ -4,11 +4,15 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "CameraMixin",
+    "DynamicFpsMixin",
     "DeltaTrackerTimerMixin",
     "DisplayAccessor",
     "EntityRenderDispatcherMixin",
+    "GameRendererMixin",
     "ItemDisplayAccessor",
     "KeyMappingAccessor",
+    "LightTextureMixin",
+    "LevelRendererMixin",
     "MinecraftMixin",
     "RenderSystemMixin"
   ],

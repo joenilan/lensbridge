@@ -34,12 +34,39 @@ public final class DirectorCamera {
     public static volatile long directorFrames;
 
     /** End of every frame (from Game.onFrame): record whether it was a director frame. */
-    static void frameDone() {
+    static void frameDone(float partialTick) {
         boolean d = appliedThisFrame;
         appliedThisFrame = false;
         lastFrameDirector = d;
         if (d) {
             directorFrames++;
+            if (!preview) {
+                playerView(partialTick);   // a hidden capture frame: the player isn't looking through this camera
+            }
+        }
+    }
+
+    /** True while {@link #playerView} runs: CameraMixin then leaves the camera alone. */
+    public static boolean restoringPlayerView;
+
+    /**
+     * Put the game's camera back on the player after a hidden camera frame (a stealth capture, an inset picture).
+     * Between frames the game and other mods read the camera: sound follows it, and Jade/WAILA works out "what am I
+     * looking at" from it. Left on the hidden camera, the player would see tooltips for blocks they aren't looking
+     * at and hear another place. Render thread.
+     */
+    public static void playerView(float partialTick) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return;
+        }
+        net.minecraft.world.entity.Entity own = mc.getCameraEntity() == null ? mc.player : mc.getCameraEntity();
+        restoringPlayerView = true;
+        try {
+            mc.gameRenderer.getMainCamera().setup(mc.level, own, !mc.options.getCameraType().isFirstPerson(),
+                    mc.options.getCameraType().isMirrored(), partialTick);
+        } finally {
+            restoringPlayerView = false;
         }
     }
 
@@ -57,6 +84,14 @@ public final class DirectorCamera {
 
     /** When true the player watches the director camera live (hotkey drone/tripods, camera_preview). */
     public static volatile boolean preview;
+
+    /**
+     * The player is really looking through the director camera (active AND previewed). A hidden one (an AI's capture
+     * camera) is not the player's view: "save my view" style actions must use the player's eyes then.
+     */
+    public static boolean onScreen() {
+        return active && preview;
+    }
 
     /** Whether this frame should be seen through the director camera. */
     public static boolean shown() {

@@ -42,11 +42,26 @@ public final class AgentRelay {
     /** What each online player was last told (their access), so changes are pushed. */
     private static final Map<UUID, String> SENT = new ConcurrentHashMap<>();
     private static final Map<UUID, AtomicInteger> IN_FLIGHT = new ConcurrentHashMap<>();
-    private static final ExecutorService POOL = Executors.newFixedThreadPool(2, r -> {
+    private static final ExecutorService POOL = Executors.newFixedThreadPool(4, r -> {
         Thread t = new Thread(r, "Lensbridge agent relay");
         t.setDaemon(true);
         return t;
     });
+    /** A relayed call that takes longer is given up on (a little under the client's own 30 s wait, so the reason arrives). */
+    private static final int CALL_TIMEOUT_SECONDS = 25;
+    private static final java.util.concurrent.ScheduledExecutorService TIMER = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "Lensbridge agent relay timer");
+        t.setDaemon(true);
+        return t;
+    });
+    /**
+     * Events only staff may be sent (moderate or admin), if this Agentlink doesn't say itself (see {@link #eventTier}).
+     * Before, every agentlink.* event went to everyone with any access, "read" included.
+     */
+    private static final java.util.Set<String> STAFF_EVENTS = java.util.Set.of(
+            "agentlink.staff_chat", "agentlink.report", "agentlink.moderation", "agentlink.command");
+    /** Agentlink's own answer to "what access does this event type need" ("read" / "moderate" / "admin"), when it offers one. */
+    private static volatile Function<String, String> eventTier;
 
     private AgentRelay() {
     }
@@ -60,6 +75,9 @@ public final class AgentRelay {
         }
         relayTools = (Function<String, JsonArray>) tools;
         relayCall = (Function<Map<String, Object>, JsonObject>) call;
+        if (info.get("eventTier") instanceof Function<?, ?> tier) {
+            eventTier = (Function<String, String>) tier;
+        }
         if (info.get("subscribe") instanceof Function<?, ?> sub) {
             ((Function<BiConsumer<String, JsonObject>, AutoCloseable>) sub).apply(AgentRelay::onEvent);
         }
@@ -137,7 +155,9 @@ public final class AgentRelay {
         }
         String name = p.getGameProfile().name();
         String uuid = p.getUUID().toString();
-        POOL.execute(() -> {
+        // exactly one answer per call, from whichever comes first: the result or the timeout
+        java.util.concurrent.atomic.AtomicBoolean answered = new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.concurrent.Future<?> running = POOL.submit(() -> {
             JsonObject result;
             try {
                 JsonObject body = JsonParser.parseString(up.json()).getAsJsonObject();
@@ -150,11 +170,40 @@ public final class AgentRelay {
                 result = relayCall.apply(call);
             } catch (RuntimeException e) {
                 result = error("The server could not run that: " + e.getMessage());
-            } finally {
-                busy.decrementAndGet();
             }
-            reply(p, up.id(), result);
+            if (answered.compareAndSet(false, true)) {
+                busy.decrementAndGet();
+                reply(p, up.id(), result);
+            }
         });
+        // a call that hangs used to hold its slot for good (two of them stopped the relay for everyone)
+        TIMER.schedule(() -> {
+            if (answered.compareAndSet(false, true)) {
+                running.cancel(true);   // interrupts the worker if it has started, drops it from the queue if not
+                busy.decrementAndGet();
+                reply(p, up.id(), error("The server took longer than " + CALL_TIMEOUT_SECONDS + " s to run that and gave up. "
+                        + "Try again, or ask for less."));
+            }
+        }, CALL_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private static final List<String> TIERS = List.of(NONE, "read", "moderate", "admin");
+
+    /** The access a player needs to be sent this event: Agentlink's answer when it gives one, else the local staff list. */
+    private static String eventTier(String type) {
+        Function<String, String> ask = eventTier;
+        if (ask != null) {
+            try {
+                String tier = ask.apply(type);
+                if (tier != null && TIERS.indexOf(tier) > 0) {
+                    // never lower than the local list: an older Agentlink may not have marked every staff event
+                    return STAFF_EVENTS.contains(type) && TIERS.indexOf(tier) < 2 ? "moderate" : tier;
+                }
+            } catch (RuntimeException e) {
+                // fall through to the local list
+            }
+        }
+        return STAFF_EVENTS.contains(type) ? "moderate" : "read";
     }
 
     private static void reply(ServerPlayer p, int id, JsonObject result) {
@@ -182,10 +231,12 @@ public final class AgentRelay {
         e.addProperty("time", System.currentTimeMillis());
         e.add("data", data);
         AgentDown msg = new AgentDown("event", 0, e.toString());
+        int needed = TIERS.indexOf(eventTier(type));
         server.execute(() -> {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                 String access = SENT.get(p.getUUID());
-                if (access != null && !NONE.equals(access)) {
+                // staff chat, reports, moderation and player commands only to moderate / admin
+                if (access != null && TIERS.indexOf(access) >= Math.max(1, needed)) {
                     PacketDistributor.sendToPlayer(p, msg);
                 }
             }

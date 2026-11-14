@@ -30,48 +30,79 @@ public final class ManagerTools {
     private ManagerTools() {
     }
 
-    static Path thumb(String name) {
+    public static Path thumb(String name) {
         return Capture.dir("thumbs").resolve(name.replaceAll("[^A-Za-z0-9_\\-]", "_") + ".png");
     }
 
     private static Tripods.Tripod get(String name) {
-        Tripods.Tripod t = Tripods.all().get(name);
+        Tripods.Tripod t = Tripods.get(name);
         if (t == null) {
             throw new IllegalArgumentException("No tripod " + name);
         }
         return t;
     }
 
+    /** Changes whenever the listed cameras, their thumbnails or the edit state change: the page polls this, not the list. */
+    private static String signature(List<Tripods.Tripod> list) {
+        StringBuilder sb = new StringBuilder(String.valueOf(UserControls.editing()));
+        for (Tripods.Tripod t : list) {
+            sb.append(t.toJson()).append(thumb(t.name()).toFile().lastModified());
+        }
+        return Integer.toHexString(sb.toString().hashCode());
+    }
+
     /** Capture thumbnails for the given tripods in one stealth batch (the player's screen doesn't change). */
     public static List<String> thumbs(List<Tripods.Tripod> list) {
         List<String> done = new ArrayList<>();
-        boolean wasActive = DirectorCamera.active;
-        Stealth.begin();
-        boolean hud = Game.call(() -> Game.mc().options.hideGui);
-        Game.run(() -> Game.mc().options.hideGui = true);
+        Capture.lock();   // one capture at a time: two batches at once left the HUD hidden and a hidden camera active
         try {
-            for (Tripods.Tripod t : list) {
-                Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
-                DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
-                DirectorCamera.source = t.name();
-                Capture.grab(thumb(t.name()), 3);
-                done.add(t.name());
+            boolean wasActive = DirectorCamera.active;
+            Stealth.begin();
+            try {
+                // inside the try: if reading or hiding the HUD fails, stealth and the camera are still put back
+                boolean hud = Game.call(() -> Game.mc().options.hideGui);
+                try {
+                    Game.run(() -> Game.mc().options.hideGui = true);
+                    for (Tripods.Tripod t : list) {
+                        Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
+                        DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
+                        DirectorCamera.source = t.name();
+                        Capture.grab(thumb(t.name()), 3);
+                        done.add(t.name());
+                    }
+                } finally {
+                    Game.run(() -> Game.mc().options.hideGui = hud);
+                }
+            } finally {
+                Stealth.end();
+                if (!wasActive) {
+                    DirectorCamera.release();
+                }
             }
         } finally {
-            Game.run(() -> Game.mc().options.hideGui = hud);
-            Stealth.end();
-            if (!wasActive) {
-                DirectorCamera.release();
-            }
+            Capture.unlock();
         }
         return done;
     }
 
     public static void registerAll(BridgeServer s) {
-        s.register(new Tool("tripod_all", "All tripods as JSON (name, group, x, y, z, yaw, pitch, fov, enabled, track, has_thumb).",
-                new Schema().build(), a -> {
+        s.register(new Tool("tripod_all", "The tripods of the world and dimension the player is in, as JSON (name, group, x, y, z, "
+                + "yaw, pitch, fov, enabled, track, world, dimension, has_thumb), plus a signature that changes when anything "
+                + "listed changes. all=true lists the cameras of every world.",
+                new Schema().prop("all", "boolean", "Every world and dimension, not only the current one (default false)")
+                        .prop("signature_only", "boolean", "Only the signature and edit state (cheap, for polling)").build(), a -> {
+                    List<Tripods.Tripod> list = Tripods.list(a.bool("all", false));
+                    if (a.bool("signature_only", false)) {
+                        JsonObject sig = new JsonObject();
+                        sig.addProperty("signature", signature(list));
+                        String ed = UserControls.editing();
+                        if (ed != null) {
+                            sig.addProperty("editing", ed);
+                        }
+                        return Result.text(GSON.toJson(sig));
+                    }
                     JsonArray arr = new JsonArray();
-                    for (Tripods.Tripod t : Tripods.all().values()) {
+                    for (Tripods.Tripod t : list) {
                         JsonObject o = t.toJson();
                         Path th = thumb(t.name());
                         o.addProperty("has_thumb", Files.exists(th));
@@ -80,6 +111,7 @@ public final class ManagerTools {
                     }
                     JsonObject out = new JsonObject();
                     out.add("tripods", arr);
+                    out.addProperty("signature", signature(list));
                     out.addProperty("camera", DirectorCamera.active ? (DirectorCamera.program != null ? DirectorCamera.program.describe() : "fixed") : "off");
                     out.addProperty("preview", DirectorCamera.preview);
                     String ed = UserControls.editing();
@@ -110,8 +142,10 @@ public final class ManagerTools {
                     if (!name.equals(t.name())) {
                         Tripods.remove(t.name());
                     }
-                    Tripods.put(new Tripods.Tripod(name, pos, yaw, pitch, (float) a.num("fov", t.fov()), track, a.bool("enabled", t.enabled())));
-                    return Result.text(GSON.toJson(Tripods.all().get(name).toJson()));
+                    Tripods.Tripod now = new Tripods.Tripod(name, pos, yaw, pitch, (float) a.num("fov", t.fov()), track,
+                            a.bool("enabled", t.enabled()), t.world(), t.dim());
+                    Tripods.put(now);
+                    return Result.text(GSON.toJson(now.toJson()));
                 }));
 
         s.register(new Tool("tripod_nudge", "Nudge a tripod relative to its own view: forward/right/up in blocks, yaw/pitch/fov in degrees.",
@@ -127,27 +161,41 @@ public final class ManagerTools {
                     if (a.has("fov") && t.fov() <= 0) {
                         fov = 70 + (float) a.num("fov", 0);
                     }
-                    Tripods.put(new Tripods.Tripod(t.name(), pos, t.yaw() + (float) a.num("yaw", 0),
-                            Math.max(-90, Math.min(90, t.pitch() + (float) a.num("pitch", 0))), Math.max(10, Math.min(150, fov)), t.track(), t.enabled()));
-                    return Result.text(GSON.toJson(Tripods.all().get(t.name()).toJson()));
+                    Tripods.Tripod now = new Tripods.Tripod(t.name(), pos, t.yaw() + (float) a.num("yaw", 0),
+                            Math.max(-90, Math.min(90, t.pitch() + (float) a.num("pitch", 0))), Math.max(10, Math.min(150, fov)),
+                            t.track(), t.enabled(), t.world(), t.dim());
+                    Tripods.put(now);
+                    return Result.text(GSON.toJson(now.toJson()));
                 }));
 
-        s.register(new Tool("tripod_set_from_view", "Store the current view (director camera if active, else the player's eyes) into a tripod "
-                + "(creates it if missing). Fly the drone (K) or look around, then save the angle you like.",
+        s.register(new Tool("tripod_set_from_view", "Store what is on the player's screen (a camera they are previewing or flying, "
+                + "else their own eyes) into an EXISTING tripod; a hidden capture camera is not their view. Fails if the tripod "
+                + "doesn't exist (use tripod_place to make one). Fly the drone (Alt+D) or look around, then save the angle you like.",
                 new Schema().req("name", "string", "").build(), a -> {
+                    // update only: the browser's "Save my view here" on a stale card used to bring a deleted camera back
+                    Tripods.Tripod old = Tripods.get(a.str("name"));
+                    if (old == null) {
+                        throw new IllegalArgumentException("There is no camera called " + a.str("name")
+                                + " any more (it was removed). Place a new one with Alt+T or tripod_place.");
+                    }
                     Shot v = Game.call(() -> {
-                        if (DirectorCamera.active) {
+                        if (DirectorCamera.onScreen()) {   // only a camera the player really looks through is "their view"
                             return new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov);
                         }
                         LocalPlayer p = Game.mc().player;
+                        if (p == null) {
+                            throw new IllegalStateException("Not in a world");
+                        }
                         return new Shot(p.getEyePosition(), p.getYRot(), p.getXRot(), 0, 0);
                     });
-                    Tripods.Tripod old = Tripods.all().get(a.str("name"));
-                    Tripods.put(new Tripods.Tripod(a.str("name"), v.pos(), v.yaw(), v.pitch(), v.fov(), null, old == null || old.enabled()));
+                    // moved here, so it belongs to the world and dimension the player is in now
+                    Tripods.put(new Tripods.Tripod(old.name(), v.pos(), v.yaw(), v.pitch(), v.fov(), null, old.enabled(),
+                            Tripods.currentWorld(), Tripods.currentDim()));
                     return Result.text("Saved view to " + a.str("name"));
                 }));
 
-        s.register(new Tool("tripod_thumbs", "Refresh tripod thumbnails (stealth - the player's screen doesn't change). Default: all.",
+        s.register(new Tool("tripod_thumbs", "Refresh tripod thumbnails (stealth - the player's screen doesn't change). Default: all "
+                + "tripods of the current world and dimension.",
                 new Schema().prop("names", "array", "Tripod names").prop("group", "string", "Only this group").build(), a -> {
                     List<Tripods.Tripod> list = new ArrayList<>();
                     if (a.has("names")) {
@@ -155,7 +203,7 @@ public final class ManagerTools {
                             list.add(get(el.getAsString()));
                         }
                     } else {
-                        for (Tripods.Tripod t : Tripods.all().values()) {
+                        for (Tripods.Tripod t : Tripods.here()) {
                             if (!a.has("group") || t.group().equals(a.str("group"))) {
                                 list.add(t);
                             }
@@ -176,8 +224,15 @@ public final class ManagerTools {
                 a -> Result.text(Game.call(() -> UserControls.finishEdit(a.bool("save", true))))));
 
         s.register(new Tool("exit_camera", "Return the player to their own view from any camera mode (edit -> cancel, drone -> land, "
-                + "preview -> off). Same as pressing Esc in game.", new Schema().build(),
-                a -> Result.text(Game.call(UserControls::exitCameraMode) ? "Back to the player's view" : "Already on the player's view")));
+                + "preview -> off) and release the director camera even when it was hidden. Like Esc in game, plus the hidden camera.",
+                new Schema().build(),
+                a -> Result.text(Game.call(() -> UserControls.exitCameraMode(true)) ? "Back to the player's view" : "Already on the player's view")));
+
+        s.register(new Tool("restore", "Put back the lasting things Lensbridge changed for a shoot: unfreeze the world if scene froze "
+                + "it, the advance_time gamerule to its value from before, shaders as they were, and the window's size / "
+                + "fullscreen from before window_size. Call it when you are done (after exit_camera). Time of day and weather "
+                + "are not put back. Sends commands (needs op for the freeze and the gamerule). In game: /lensbridge restore.",
+                new Schema().build(), a -> Result.text(Game.call(com.dreadedzombie.lensbridge.Restore::apply))));
 
         s.register(new Tool("guide", "Read Lensbridge's bundled docs. Start every session with the agent guide (default): ground "
                 + "rules, workflow, lighting, staging, framing and video. Other names: tools (full tool reference), user-guide, readme.",
@@ -230,8 +285,10 @@ public final class ManagerTools {
                         return Result.text("preview off");
                     }
                     Tripods.Tripod t = get(a.str("name"));
-                    Game.run(() -> UserControls.viewTripod(t));
-                    DirectorCamera.preview = true;
+                    Game.run(() -> {
+                        UserControls.viewTripod(t);
+                        DirectorCamera.preview = true;
+                    });
                     return Result.text("Previewing " + t.name() + " on screen");
                 }));
     }

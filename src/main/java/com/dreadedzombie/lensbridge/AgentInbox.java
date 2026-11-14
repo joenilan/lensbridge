@@ -130,10 +130,19 @@ public final class AgentInbox {
         return o;
     }
 
-    /** Take queued requests, waiting up to {@code waitMs} for the first one. Called from the bridge thread. */
-    public static JsonArray take(long waitMs) throws InterruptedException {
+    /** A request is handed out at most this many times while nobody acknowledges it (an AI that never sends ack). */
+    private static final int MAX_DELIVERIES = 3;
+
+    /**
+     * Hand out queued requests, waiting up to {@code waitMs} for the first one. Called from the bridge thread.
+     * <p>A request stays queued until a LATER poll acknowledges it ({@code ack} = the highest id the AI has seen).
+     * Before, a poll whose client had already given up waiting still took the whole queue with it, and the player's
+     * request was lost after "sent to your AI". Unacknowledged requests are returned again ("delivery": 2, 3).
+     */
+    public static JsonArray take(long waitMs, int ack) throws InterruptedException {
         long until = System.currentTimeMillis() + Math.max(0, waitMs);
         synchronized (LOCK) {
+            QUEUE.removeIf(r -> r.get("id").getAsInt() <= ack);
             waiting++;
             try {
                 while (QUEUE.isEmpty()) {
@@ -144,8 +153,14 @@ public final class AgentInbox {
                     LOCK.wait(left);
                 }
                 JsonArray out = new JsonArray();
-                while (!QUEUE.isEmpty()) {
-                    out.add(QUEUE.removeFirst());
+                for (java.util.Iterator<JsonObject> it = QUEUE.iterator(); it.hasNext(); ) {
+                    JsonObject r = it.next();
+                    int n = (r.has("delivery") ? r.get("delivery").getAsInt() : 0) + 1;
+                    r.addProperty("delivery", n);
+                    out.add(r.deepCopy());   // a copy: the queued one changes on the next poll
+                    if (n >= MAX_DELIVERIES) {
+                        it.remove();   // handed out three times with no ack: stop repeating it
+                    }
                 }
                 return out;
             } finally {

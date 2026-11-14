@@ -84,8 +84,58 @@ Turn the Mothlight QA stage into a reusable template so any modmaker can make a 
 - [x] Agentlink missing → built-in server, unchanged
 - [x] Alt+C opens the Camera Manager on whichever server is live
 - [ ] In-game check with and without Agentlink (owner's go-ahead needed)
+- [x] Inset (`/lensbridge inset`, tools `inset`, `inset_snapshot`): picture-in-picture of a nearby player or mob.
+      Tested 2026-11-13 on vanilla rendering (dev client) and on Sodium + Iris (shaders off and on) + Dynamic FPS,
+      target up to 90 m away
+- [x] Dynamic FPS: frames keep coming while Lensbridge captures, records or shows an inset (`FrameGuard`,
+      `DynamicFpsMixin`); a skipped frame is never read back as a picture or left on screen
+- [x] Inset camera collision (never inside walls, roofs, leaves)
+- [x] Inset at 30 pictures a second (GPU texture copy, no readback; up to 60); the game camera is put back on the
+      player after each hidden frame (Jade/WAILA and sound read it between frames)
+- [x] Inset `eyes` mode, `full` view (the watching camera as the whole screen; Esc back), chase camera goes to the
+      side when behind is blocked and falls back to eyes in a one-block space, night-vision lighting for the
+      watching camera in the dark (`LightTextureMixin`), no first-person hand in full view (`GameRendererMixin`).
+      Tested 2026-11-13 in the offline dev game
+- [x] Far players: Agentlink `watch` with `view: "near"` puts the staff member there invisibly, then the inset works
 - [ ] Carry to `mc/26.3` (only `UserControls` differs: 26.3 opens the URL with `Blaze3D.openUri`)
 - [ ] Publish Lensbridge events on the bus (`lensbridge.capture_saved`, `lensbridge.recording_started/stopped`)
+
+## Next: solid for release (owner, 2026-11-13: "we want lensbridge/agentlink to be a combo plugin (and standalones) so they need to be solid")
+
+- [x] **Remove a camera in game** (owner: "I can place cameras but not remove them"; until now only the browser Camera Manager could). **Alt+X** removes the camera you are looking through, else one right where you are, else the one you look at, else the nearest within 5 blocks. `/lensbridge cameras` lists them with [remove] buttons, `/lensbridge cameras remove <name|all>`, `/lensbridge cameras undo`. Publishes `lensbridge.tripod_removed`. Built 2026-11-13, not yet tested in game
+- [x] Bug audit findings (2026-11-13). Fixed and built 2026-11-13; **none of it tested in a live game yet**:
+  - [x] One capture at a time: a global re-entrant lock around every capture sequence (`Capture.lock`); a second caller waits 30 s, then gets "Another capture is running". Alt+T, Alt+D and "Save my view here" use the camera only when it is on the player's screen
+  - [x] `exit_camera` / "Back to my view" releases a hidden camera too (Esc and Backspace still only act on what is on screen)
+  - [x] Alt+R releases a hidden camera first, leaves the HUD as it is so the REC line stays visible (F1 first for a clean video), prints failures as failures, and refuses to start while the last clip is still encoding
+  - [x] Deleted cameras no longer come back: saving an edit of a removed camera, removing a camera that is being edited, and "Save my view here" on a stale card (`tripod_set_from_view` is update-only)
+  - [x] Alt+X picks by name and from the on-screen view: looked-through, then right here (1 block), then looked-at with a clear line (16 blocks with props hidden, 48 shown), then nearest within 5
+  - [x] `tripods.json`: bad entries skipped (damaged file copied to `tripods.json.broken-<time>`), atomic saves, save failures logged not thrown, `Tripods.all()` returns a copy
+  - [x] Cameras carry their world (server address / world folder) and dimension; hotkeys, `/lensbridge cameras`, props, the manager and the default tool lists show only the current one; older cameras show everywhere
+  - [x] Camera Manager reloads on a cheap signature poll, thumbnails are deleted with their camera, names are escaped in the page
+  - [x] Leaving a world stops pilot mode, the camera, the recorder, the inset, an edit and held keys; respawn and dimension change do the camera / pilot / keys part
+  - [x] Every restore step in thumbnails, renders, recordings and multicam runs whatever the others do; **Alt+Backspace** panic key
+  - [x] `hold_keys` capped at 60 s and released when a screen opens
+  - [x] Recorder: one token per recording
+  - [x] Full-view inset stays out of hidden captures; `Inset.stop()` from the tool runs on the client thread
+  - [x] `agent_inbox`: requests stay queued until a later poll acknowledges them (`ack` / `next_ack`; at most 3 deliveries)
+  - [x] Empty or garbled `lensbridge.json` = defaults plus a `.broken` copy, atomic write; Alt+C and `/lensbridge connect` say why when the connection didn't start (port in use, disabled, Agentlink not listening)
+  - [x] Hardening: `?token=` on `/file` only, output names sanitised, HTTP 400 for malformed JSON, warning for a non-loopback `host`; `scene`, `multicam`, `stage_*` and world=sync/frozen/step captures follow the server's AI-control rule
+  - [x] `command` / `chat` refuse `agentlink confirm` / `agentlink cancel`; `screen_click` does not click in the chat screen
+  - [x] Staff relay: staff-only events (staff chat, reports, moderation, player commands) go to moderate / admin only, using Agentlink's `eventTier` when it offers one; relayed calls time out after 25 s; pool of 4; payload limit counted in UTF-8 bytes
+  - [x] `restore` tool and `/lensbridge restore`: unfreeze, `advance_time`, shaders, window size / fullscreen
+- [ ] Regenerate `docs/TOOLS.md` with `tools/gen_tool_reference.py` against a running client (hand-edited for this change)
+- [ ] Live test of everything above (owner's go-ahead needed to start a game)
+
+### Known gaps from the 2026-11-13 audit (left for later)
+
+- [ ] world=sync renders change `tick rate` for everyone on a multiplayer server
+- [ ] `required: true` `@Redirect` mixins on `blitToScreen` / `glfwSwapBuffers` (prefer `@WrapWithCondition`); `LevelRendererMixin` should be `require = 0`
+- [ ] Stealth is read separately by two mixins within one frame (latch it once per frame)
+- [ ] `keepRunningUnfocused` forces `pauseOnLostFocus` off every tick
+- [ ] No fallback server if Agentlink rejects the provider
+- [ ] Camera names with spaces can't be removed by command, and a camera can be named "all"
+- [ ] Camera names are still global across worlds (a name used in one world is taken in all); a server reached under two addresses counts as two worlds
+- [ ] `restore` does not put back time of day or weather; a freeze made by `stage_build` is undone by `stage_clear`, not `restore`
 
 ## 0.6: promo studio
 

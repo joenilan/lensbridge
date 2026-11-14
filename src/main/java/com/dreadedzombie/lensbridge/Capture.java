@@ -42,6 +42,51 @@ public final class Capture {
         return LocalDateTime.now().format(STAMP);
     }
 
+    // ---------------------------------------------------------------- one capture at a time
+
+    /**
+     * Every capture sequence saves and restores the HUD setting and the director camera. Two at once (two thumbnail
+     * batches, a thumbnail during a recording) restore each other's half-way state and mix frames between outputs, so
+     * one lock is held around each sequence. Re-entrant: a sequence may call another (render -> grab).
+     */
+    private static final java.util.concurrent.locks.ReentrantLock LOCK = new java.util.concurrent.locks.ReentrantLock();
+    private static final int LOCK_WAIT_SECONDS = 30;
+    /** Set by the player's panic key: the running capture stops at its next frame grab. */
+    private static volatile boolean abort;
+
+    /** Take the capture lock (HTTP / worker threads only, never the client thread). Pair with {@link #unlock()}. */
+    public static void lock() {
+        try {
+            if (!LOCK.tryLock(LOCK_WAIT_SECONDS, TimeUnit.SECONDS)) {
+                // a clear error instead of hanging forever behind an hour-long recording
+                throw new IllegalStateException("Another capture is running (a recording, a render or thumbnails) and didn't "
+                        + "finish within " + LOCK_WAIT_SECONDS + " s. Wait for it, or stop it (Alt+R stops a recording; "
+                        + "Alt+Backspace in game stops any capture), then try again.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for another capture to finish");
+        }
+        if (LOCK.getHoldCount() == 1) {
+            abort = false;   // a new sequence: an earlier panic press doesn't apply to it
+        }
+    }
+
+    public static void unlock() {
+        LOCK.unlock();
+    }
+
+    /** Panic key: make the capture that is running (if any) stop at its next frame. Any thread. */
+    public static void abortRunning() {
+        abort = true;
+    }
+
+    /** A file name from a tool argument: only [A-Za-z0-9_.-] and no leading dot, so "../" can't leave the captures folder. */
+    public static String safeName(String name) {
+        String s = name == null ? "" : name.replaceAll("[^A-Za-z0-9_.-]", "_").replaceAll("^\\.+", "");
+        return s.isEmpty() ? "capture" : s;
+    }
+
     private static volatile long lastGrab;
 
     /** After an idle spell the render pipeline may hand back a stale frame; warm it up first. */
@@ -66,6 +111,9 @@ public final class Capture {
 
     /** Grab the current frame as an image (caller must close it). Off-thread. */
     public static NativeImage grabImage(int settleFrames) {
+        if (abort && LOCK.isHeldByCurrentThread()) {
+            throw new IllegalStateException("Capture stopped by the player (Alt+Backspace)");
+        }
         boolean cold = System.currentTimeMillis() - lastGrab > 1500;   // first capture after a pause (warm() resets it)
         settleFrames = warm(settleFrames);
         // A capture meant to show the director camera must read a frame that was really drawn from it. Right after a
@@ -104,7 +152,7 @@ public final class Capture {
     /** Start a streamed MP4 sized to the current window. */
     public static VideoStream stream(String name, int fps) {
         int[] size = Game.call(() -> new int[]{Game.mc().getMainRenderTarget().width, Game.mc().getMainRenderTarget().height});
-        return new VideoStream(dir("videos").resolve(name + ".mp4"), size[0], size[1], fps);
+        return new VideoStream(dir("videos").resolve(safeName(name) + ".mp4"), size[0], size[1], fps);
     }
 
     /** Pull {@code count} evenly spaced stills out of a finished video (for contact sheets). */
@@ -132,11 +180,13 @@ public final class Capture {
 
     /** Grab with the HUD temporarily hidden (restores the previous setting). */
     public static Path grabClean(Path file, boolean hideHud, int settleFrames) {
+        lock();
         Stealth.begin();
         try {
             return grabCleanInner(file, hideHud, settleFrames);
         } finally {
             Stealth.end();
+            unlock();
         }
     }
 

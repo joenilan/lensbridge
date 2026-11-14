@@ -131,7 +131,7 @@ public final class DroneTools {
                     }
                     String name = a.str("name", Tripods.nextName());
                     Tripods.put(new Tripods.Tripod(name, pos, yaw, pitch, (float) a.num("fov", v.fov()), a.has("target") ? a.obj("target") : null));
-                    return Result.text("Tripod '" + name + "' placed (" + Tripods.all().size() + " total)");
+                    return Result.text("Tripod '" + name + "' placed (" + Tripods.here().size() + " in this world and dimension)");
                 }));
 
         s.register(new Tool("tripod_ring", "Place a ring of tripods around a subject in one go (e.g. 4 or 6 angles), all aimed at it.",
@@ -150,24 +150,34 @@ public final class DroneTools {
                     return Result.text(n + " tripods placed around " + c);
                 }));
 
-        s.register(new Tool("tripod_list", "List tripods.", new Schema().build(), a -> {
+        s.register(new Tool("tripod_list", "List the tripods of the world and dimension the player is in (all=true: every world).",
+                new Schema().prop("all", "boolean", "Every world and dimension (default false)").build(), a -> {
             StringBuilder sb = new StringBuilder();
-            Tripods.all().values().forEach(t -> sb.append(String.format(Locale.ROOT, "%s at %.1f %.1f %.1f yaw %.0f pitch %.0f%s%n",
-                    t.name(), t.pos().x, t.pos().y, t.pos().z, t.yaw(), t.pitch(), t.track() != null ? " tracking " + t.track() : "")));
-            return Result.text(sb.isEmpty() ? "No tripods" : sb.toString());
+            boolean everywhere = a.bool("all", false);
+            Tripods.list(everywhere).forEach(t -> sb.append(String.format(Locale.ROOT, "%s at %.1f %.1f %.1f yaw %.0f pitch %.0f%s%s%n",
+                    t.name(), t.pos().x, t.pos().y, t.pos().z, t.yaw(), t.pitch(), t.track() != null ? " tracking " + t.track() : "",
+                    everywhere && t.world() != null ? " in " + t.world() + " " + t.dim() : "")));
+            return Result.text(sb.isEmpty() ? "No tripods" + (everywhere ? "" : " here (all=true lists other worlds)") : sb.toString());
         }));
 
-        s.register(new Tool("tripod_remove", "Remove a tripod, a whole group (name prefix before the first _ ), or all.",
+        s.register(new Tool("tripod_remove", "Remove a tripod by name, a whole group (name prefix before the first _ ), or all. "
+                + "Group and all only touch the current world and dimension unless everywhere=true.",
                 new Schema().prop("name", "string", "").prop("group", "string", "e.g. 'sheet' removes sheet_wide, sheet_close...")
-                        .prop("all", "boolean", "").build(), a -> {
+                        .prop("all", "boolean", "").prop("everywhere", "boolean", "With group/all: every world and dimension").build(), a -> {
+                    boolean everywhere = a.bool("everywhere", false);
                     if (a.bool("all", false)) {
-                        Tripods.clear();
-                        return Result.text("All tripods removed");
+                        if (everywhere) {
+                            Tripods.clear();
+                            return Result.text("All tripods removed, in every world");
+                        }
+                        List<Tripods.Tripod> here = Tripods.here();
+                        here.forEach(t -> Tripods.remove(t.name()));
+                        return Result.text("Removed the " + here.size() + " tripod(s) of this world and dimension");
                     }
                     if (a.has("group")) {
                         String g = a.str("group");
                         int n = 0;
-                        for (Tripods.Tripod t : new ArrayList<>(Tripods.all().values())) {
+                        for (Tripods.Tripod t : Tripods.list(everywhere)) {
                             if (t.group().equals(g) && Tripods.remove(t.name())) {
                                 n++;
                             }
@@ -178,7 +188,7 @@ public final class DroneTools {
                 }));
 
         s.register(new Tool("tripod_view", "Look through a tripod (live).", new Schema().req("name", "string", "").build(), a -> {
-            Tripods.Tripod t = Tripods.all().get(a.str("name"));
+            Tripods.Tripod t = Tripods.get(a.str("name"));
             if (t == null) {
                 throw new IllegalArgumentException("No tripod " + a.str("name"));
             }
@@ -192,22 +202,26 @@ public final class DroneTools {
                 new Schema().prop("names", "array", "Tripod names (default all)").prop("name", "string", "Output prefix").build(),
                 a -> {
                     List<Tripods.Tripod> list = pick(a);
-                    String prefix = a.str("name", "angles_" + Capture.stamp());
+                    String prefix = Capture.safeName(a.str("name", "angles_" + Capture.stamp()));
+                    Capture.lock();   // one capture at a time (see Capture.lock)
                     com.dreadedzombie.lensbridge.Stealth.begin();
                     try {
                     List<Path> files = new ArrayList<>();
                     boolean hud = Game.call(() -> Game.mc().options.hideGui);
-                    Game.run(() -> Game.mc().options.hideGui = true);
                     try {
+                        Game.run(() -> Game.mc().options.hideGui = true);
                         for (Tripods.Tripod t : list) {
                             Shot sh = Game.call(() -> Tripods.shot(t, 1.0F));
                             DirectorCamera.set(sh.pos(), sh.yaw(), sh.pitch(), 0, sh.fov());
                                 DirectorCamera.source = t.name();
-                            files.add(Capture.grab(Capture.dir("screenshots").resolve(prefix + "_" + t.name() + ".png"), 3));
+                            files.add(Capture.grab(Capture.dir("screenshots").resolve(prefix + "_" + Capture.safeName(t.name()) + ".png"), 3));
                         }
                     } finally {
-                        Game.run(() -> Game.mc().options.hideGui = hud);
-                        DirectorCamera.release();
+                        try {
+                            Game.run(() -> Game.mc().options.hideGui = hud);
+                        } finally {
+                            DirectorCamera.release();
+                        }
                     }
                     Path sheet = Capture.contactSheet(files, files.size(), Capture.dir("screenshots").resolve(prefix + "_sheet.png"));
                     StringBuilder sb = new StringBuilder();
@@ -215,6 +229,7 @@ public final class DroneTools {
                     return Result.text(sb + "Sheet: " + sheet).addImage(sheet, com.dreadedzombie.lensbridge.Lensbridge.config().previewMaxEdge);
                     } finally {
                         com.dreadedzombie.lensbridge.Stealth.end();
+                        Capture.unlock();
                     }
                 }));
 
@@ -226,22 +241,24 @@ public final class DroneTools {
                     List<Tripods.Tripod> list = pick(a);
                     int fps = a.i("fps", 20);
                     int frames = (int) Math.round(a.num("seconds", 5) * fps);
-                    String prefix = a.str("name", "multicam_" + Capture.stamp());
+                    String prefix = Capture.safeName(a.str("name", "multicam_" + Capture.stamp()));
+                    Capture.lock();   // one capture at a time (see Capture.lock)
                     com.dreadedzombie.lensbridge.Stealth.begin();
                     try {
                     Map<String, com.dreadedzombie.lensbridge.VideoStream> out = new LinkedHashMap<>();
                     boolean hud = Game.call(() -> Game.mc().options.hideGui);
                     boolean wasFrozen = Rendering.worldFrozen();
-                    Game.run(() -> {
-                        Game.mc().options.hideGui = true;
-                        if (!wasFrozen) {
-                            Game.mc().player.connection.sendCommand("tick freeze");
-                        }
-                    });
-                    Game.sleep(300);
                     double ticksPerFrame = 20.0 / fps;
                     long stepped = 0;
                     try {
+                        // inside the try, so a failure here still restores the HUD, the freeze and the camera
+                        Game.run(() -> {
+                            Game.mc().options.hideGui = true;
+                            if (!wasFrozen) {
+                                Game.mc().player.connection.sendCommand("tick freeze");
+                            }
+                        });
+                        Game.sleep(300);
                         for (Tripods.Tripod t : list) {
                             out.put(t.name(), Capture.stream(prefix + "_" + t.name(), fps));
                         }
@@ -266,15 +283,30 @@ public final class DroneTools {
                             }
                         }
                     } finally {
+                        // every restore runs whatever the others do: one encoder failing to close used to leave the
+                        // other ffmpeg processes open, the HUD hidden, the world frozen and the camera active
                         Rendering.forcedPartial = -1f;
-                        out.values().forEach(com.dreadedzombie.lensbridge.VideoStream::close);
-                        Game.run(() -> {
-                            Game.mc().options.hideGui = hud;
-                            if (!wasFrozen) {
-                                Game.mc().player.connection.sendCommand("tick unfreeze");
+                        RuntimeException closeFailed = null;
+                        for (com.dreadedzombie.lensbridge.VideoStream v : out.values()) {
+                            try {
+                                v.close();
+                            } catch (RuntimeException e) {
+                                closeFailed = closeFailed == null ? e : closeFailed;
                             }
-                        });
-                        DirectorCamera.release();
+                        }
+                        try {
+                            Game.run(() -> {
+                                Game.mc().options.hideGui = hud;
+                                if (!wasFrozen && Game.mc().player != null) {
+                                    Game.mc().player.connection.sendCommand("tick unfreeze");
+                                }
+                            });
+                        } finally {
+                            DirectorCamera.release();
+                        }
+                        if (closeFailed != null) {
+                            throw closeFailed;
+                        }
                     }
                     StringBuilder sb = new StringBuilder(String.format(Locale.ROOT,
                             "%d frames x %d angles = %.1fs per angle at true world speed%n", frames, list.size(), frames / (double) fps));
@@ -290,6 +322,7 @@ public final class DroneTools {
                     return Result.text(sb + "Angles sheet: " + sheet).addImage(sheet, com.dreadedzombie.lensbridge.Lensbridge.config().previewMaxEdge);
                     } finally {
                         com.dreadedzombie.lensbridge.Stealth.end();
+                        Capture.unlock();
                     }
                 }));
     }
@@ -298,14 +331,14 @@ public final class DroneTools {
         List<Tripods.Tripod> list = new ArrayList<>();
         if (a.has("names")) {
             for (JsonElement el : a.arr("names")) {
-                Tripods.Tripod t = Tripods.all().get(el.getAsString());
+                Tripods.Tripod t = Tripods.get(el.getAsString());
                 if (t == null) {
                     throw new IllegalArgumentException("No tripod " + el.getAsString());
                 }
                 list.add(t);
             }
         } else {
-            Tripods.all().values().stream().filter(Tripods.Tripod::enabled).forEach(list::add);
+            Tripods.here().stream().filter(Tripods.Tripod::enabled).forEach(list::add);   // this world and dimension
         }
         if (list.isEmpty()) {
             throw new IllegalStateException("No tripods - place some with tripod_place / tripod_ring (or press Y in game)");

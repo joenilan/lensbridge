@@ -39,11 +39,30 @@ public final class UserControls {
     static final KeyMapping RECORD = alt("key.lensbridge.record", GLFW.GLFW_KEY_R);
     static final KeyMapping MANAGER = alt("key.lensbridge.manager", GLFW.GLFW_KEY_C);
     static final KeyMapping PROPS = alt("key.lensbridge.props", GLFW.GLFW_KEY_P);
+    static final KeyMapping REMOVE = alt("key.lensbridge.remove", GLFW.GLFW_KEY_X);
+    static final KeyMapping PANIC = alt("key.lensbridge.panic", GLFW.GLFW_KEY_BACKSPACE);
 
     private static boolean piloting;
     private static float lockYaw;
     private static float lockPitch;
-    private static int tripodIndex = -1;
+
+    /**
+     * The tripod the player is looking through on screen right now, found by NAME (DirectorCamera.source). There used to
+     * be an index into the camera list here; it went stale whenever the list or the view changed some other way (Alt+D
+     * from a tripod, a browser delete, tripod_preview), and Alt+X then removed the wrong camera.
+     */
+    private static Tripods.Tripod viewedTripod() {
+        if (!DirectorCamera.onScreen() || (DirectorCamera.program instanceof Drone && editing == null)) {
+            return null;   // not looking through a camera, or flying the drone (whose source is "drone")
+        }
+        return Tripods.get(DirectorCamera.source);
+    }
+
+    /** What is on the player's screen: the shown camera, else their own eyes. */
+    private static Shot screenView(LocalPlayer p) {
+        return DirectorCamera.onScreen()
+                ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
+    }
 
     private UserControls() {
     }
@@ -56,6 +75,8 @@ public final class UserControls {
         event.register(RECORD);
         event.register(MANAGER);
         event.register(PROPS);
+        event.register(REMOVE);
+        event.register(PANIC);
     }
 
     /** Alt+P / Camera Manager switch: show or hide the camera props in the player's own view. */
@@ -68,6 +89,159 @@ public final class UserControls {
             com.dreadedzombie.lensbridge.cinema.Props.enabled = false;   // nobody needs them any more
         }
         return show;
+    }
+
+    // ---------------------------------------------------------------- removing cameras in game
+
+    /** How far away a camera can be picked by looking at it, how close the view must point, and the "nearest" reach. */
+    private static final double REMOVE_LOOK_RANGE = 48.0D;
+    /** With the camera props hidden (Alt+P off) the player can't see what they point at: only pick close ones. */
+    private static final double REMOVE_LOOK_RANGE_UNSEEN = 16.0D;
+    private static final double REMOVE_LOOK_DEGREES = 10.0D;
+    private static final double REMOVE_NEAR = 5.0D;
+    private static final double REMOVE_HERE = 1.0D;
+    /** The cameras taken away by the last removal, so one slip can be undone. */
+    private static List<Tripods.Tripod> lastRemoved = List.of();
+
+    /**
+     * Remove one camera without opening the browser. In this order: the one on screen (Alt+N), the one placed where
+     * the view is (within a block: a camera just dropped with Alt+T), the one being looked at with nothing in the
+     * way, else the nearest one within a few blocks. Only cameras of this world and dimension. Returns the line to
+     * show the player.
+     */
+    public static String removeCamera(LocalPlayer p) {
+        List<Tripods.Tripod> list = Tripods.here();
+        if (list.isEmpty()) {
+            return "No cameras to remove here";
+        }
+        Tripods.Tripod pick = viewedTripod();
+        String how = " (the one you were looking through)";
+        if (pick == null) {
+            // measured from what is on screen, not from the player's body (they may be watching a drone or a preview)
+            Shot view = screenView(p);
+            net.minecraft.world.phys.Vec3 eye = view.pos();
+            net.minecraft.world.phys.Vec3 look = net.minecraft.world.phys.Vec3.directionFromRotation(view.pitch(), view.yaw());
+            // 1. right here first: a camera placed where you stand has no direction to "look at", and used to be
+            //    skipped in favour of a distant one that happened to be in the cone
+            double here = REMOVE_HERE * REMOVE_HERE;
+            for (Tripods.Tripod t : list) {
+                double d = t.pos().distanceToSqr(eye);
+                if (d <= here) {
+                    here = d;
+                    pick = t;
+                    how = " (the one right where you are)";
+                }
+            }
+            if (pick == null) {
+                boolean propsShown = com.dreadedzombie.lensbridge.cinema.Props.enabled && com.dreadedzombie.lensbridge.cinema.Props.playerView;
+                double range = propsShown ? REMOVE_LOOK_RANGE : REMOVE_LOOK_RANGE_UNSEEN;
+                double best = Math.cos(Math.toRadians(REMOVE_LOOK_DEGREES));
+                for (Tripods.Tripod t : list) {
+                    net.minecraft.world.phys.Vec3 to = t.pos().subtract(eye);
+                    double d = to.length();
+                    if (d <= range && to.scale(1.0D / d).dot(look) > best && clearLine(p, eye, t.pos())) {
+                        best = to.scale(1.0D / d).dot(look);
+                        pick = t;
+                        how = " (the one you were looking at)";
+                    }
+                }
+            }
+            if (pick == null) {
+                double nearest = REMOVE_NEAR * REMOVE_NEAR;
+                for (Tripods.Tripod t : list) {
+                    double d = t.pos().distanceToSqr(eye);
+                    if (d <= nearest) {
+                        nearest = d;
+                        pick = t;
+                        how = " (the nearest one)";
+                    }
+                }
+            }
+        }
+        if (pick == null) {
+            return "Look at a camera, stand next to one, or look through one (Alt+N), then press this again. "
+                    + "Alt+P shows where they are.";
+        }
+        removeCameras(List.of(pick));
+        return "Removed " + pick.name() + how + ". " + Tripods.here().size() + " left. /lensbridge cameras undo brings it back.";
+    }
+
+    /** Nothing solid between the view and the camera (a camera behind a wall isn't "looked at"). */
+    private static boolean clearLine(LocalPlayer p, net.minecraft.world.phys.Vec3 from, net.minecraft.world.phys.Vec3 to) {
+        return p.level().clip(new net.minecraft.world.level.ClipContext(from, to, net.minecraft.world.level.ClipContext.Block.VISUAL,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, p)).getType() == net.minecraft.world.phys.HitResult.Type.MISS;
+    }
+
+    /** Remove these cameras, remember them for undo, and get the player out of any view that no longer exists. */
+    public static void removeCameras(List<Tripods.Tripod> gone) {
+        if (gone.isEmpty()) {
+            return;
+        }
+        Tripods.Tripod viewed = viewedTripod();
+        String edited = editing;
+        for (Tripods.Tripod t : gone) {
+            Tripods.remove(t.name());   // also deletes its thumbnail
+            com.google.gson.JsonObject removed = new com.google.gson.JsonObject();
+            removed.addProperty("name", t.name());
+            removed.addProperty("source", "player");
+            com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.publish("lensbridge.tripod_removed", removed);
+            if (t.name().equals(edited)) {
+                // being edited right now: cancel the edit, or Enter would save the camera straight back
+                editing = null;
+                stopPilot();
+            } else if (viewed != null && t.name().equals(viewed.name())) {
+                DirectorCamera.release();   // looking through it: back to the player's own view
+            }
+        }
+        lastRemoved = List.copyOf(gone);
+    }
+
+    /** Put back what the last removal took. Returns how many came back. (Their thumbnails are retaken on demand.) */
+    public static int undoRemove() {
+        int n = 0;
+        for (Tripods.Tripod t : lastRemoved) {
+            if (Tripods.get(t.name()) == null) {
+                Tripods.put(t);
+                n++;
+            }
+        }
+        lastRemoved = List.of();
+        return n;
+    }
+
+    // ---------------------------------------------------------------- getting unstuck
+
+    /**
+     * Alt+Backspace: stop whatever capture is running and give the player their game back. For a stuck capture (HUD
+     * gone, screen frozen, camera somewhere else); it does not undo scene changes, /lensbridge restore does that.
+     */
+    static void panic() {
+        Minecraft mc = Minecraft.getInstance();
+        Capture.abortRunning();   // the capture thread stops at its next frame and runs its own clean-up
+        Recorder.stop();
+        Stealth.reset();          // the screen shows frames again right away
+        mc.options.hideGui = false;
+        editing = null;
+        stopPilot();              // also releases the camera
+        InputDriver.releaseAll();
+        say("Stopped: captures cancelled, HUD back, camera and held keys released. /lensbridge restore undoes scene changes.");
+    }
+
+    /**
+     * Leaving the world (or, with {@code quit} false, respawning / changing dimension): a camera view, pilot mode, an
+     * edit and held keys belong to the place just left. On quitting also the recorder and the inset, which would
+     * otherwise carry on into the next world or the title screen.
+     */
+    static void leaveWorld(boolean quit) {
+        editing = null;
+        if (piloting || DirectorCamera.active) {
+            stopPilot();
+        }
+        InputDriver.releaseAll();
+        if (quit) {
+            Recorder.stop();
+            Inset.stop();
+        }
     }
 
     public static boolean piloting() {
@@ -114,7 +288,7 @@ public final class UserControls {
 
     /** Fly a tripod's camera like a precise drone; Enter saves the view into it, Backspace cancels. Client thread. */
     public static void startEdit(String name) {
-        Tripods.Tripod t = Tripods.all().get(name);
+        Tripods.Tripod t = Tripods.get(name);
         if (t == null) {
             throw new IllegalArgumentException("No tripod " + name);
         }
@@ -139,14 +313,23 @@ public final class UserControls {
         }
         editing = null;
         String msg = "Cancelled - " + name + " unchanged";
-        if (save) {
-            Tripods.Tripod old = Tripods.all().get(name);
+        Tripods.Tripod old = Tripods.get(name);
+        if (save && old == null) {
+            // removed while it was being edited (browser, command): saving would bring a deleted camera back
+            msg = name + " was removed while you were editing it - nothing saved";
+        } else if (save) {
             float fov = DirectorCamera.program instanceof Drone d ? d.fov() : DirectorCamera.fov;
-            Tripods.put(new Tripods.Tripod(name, DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, fov,
-                    old != null ? old.track() : null, old == null || old.enabled()));
+            Tripods.Tripod t = new Tripods.Tripod(name, DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, fov,
+                    old.track(), old.enabled(), old.world(), old.dim());
+            Tripods.put(t);
             msg = "Saved " + name;
-            Tripods.Tripod t = Tripods.all().get(name);
-            Thread th = new Thread(() -> com.dreadedzombie.lensbridge.tools.ManagerTools.thumbs(List.of(t)), "lensbridge-thumb");
+            Thread th = new Thread(() -> {
+                try {
+                    com.dreadedzombie.lensbridge.tools.ManagerTools.thumbs(List.of(t));
+                } catch (RuntimeException e) {   // e.g. another capture is running: the thumbnail just stays old
+                    Lensbridge.LOGGER.warn("Lensbridge: thumbnail of {} not refreshed: {}", name, e.getMessage());
+                }
+            }, "lensbridge-thumb");
             th.setDaemon(true);
             th.start();
         }
@@ -155,8 +338,13 @@ public final class UserControls {
         return msg;
     }
 
-    /** Leave whatever camera mode the player is in (edit -> cancel, drone -> land, preview -> back). Client thread. */
-    public static boolean exitCameraMode() {
+    /**
+     * Leave whatever camera mode the player is in (edit -> cancel, drone -> land, preview -> back). Client thread.
+     * {@code hiddenToo}: also release a camera the player isn't looking through. The exit_camera tool and the browser's
+     * "Back to my view" pass true, so an AI that ends its work with exit_camera doesn't leave a hidden camera active;
+     * Esc and Backspace pass false, so they don't swallow a key press (or kill an AI's shot) when nothing is on screen.
+     */
+    public static boolean exitCameraMode(boolean hiddenToo) {
         if (editing != null) {
             finishEdit(false);
             return true;
@@ -166,10 +354,18 @@ public final class UserControls {
             say("Drone landed - back to your view");
             return true;
         }
-        if (DirectorCamera.active && DirectorCamera.preview) {
+        if (Inset.full) {
+            Inset.setFull(false);
+            say("Back to your view (the small picture stays; /lensbridge inset off closes it)");
+            return true;
+        }
+        if (DirectorCamera.onScreen()) {
             DirectorCamera.release();
-            tripodIndex = -1;
             say("Back to your view");
+            return true;
+        }
+        if (hiddenToo && DirectorCamera.active) {
+            DirectorCamera.release();   // nothing changes on screen, so nothing to tell the player
             return true;
         }
         return false;
@@ -178,7 +374,7 @@ public final class UserControls {
     /** Esc while in a camera mode exits that mode instead of opening the pause menu. */
     static void onScreenOpening(net.neoforged.neoforge.client.event.ScreenEvent.Opening event) {
         if (event.getNewScreen() instanceof net.minecraft.client.gui.screens.PauseScreen && event.getCurrentScreen() == null
-                && exitCameraMode()) {
+                && exitCameraMode(false)) {
             event.setCanceled(true);
         }
     }
@@ -202,13 +398,15 @@ public final class UserControls {
         if (p == null) {
             return;
         }
+        while (PANIC.consumeClick()) {
+            panic();
+        }
         while (DRONE.consumeClick()) {
             if (piloting()) {
                 stopPilot();
                 say("Drone landed - back to your view");
             } else {
-                Shot from = DirectorCamera.active
-                        ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
+                Shot from = screenView(p);   // a hidden AI camera is not the player's view
                 try {
                     startPilot(from, 6);
                     say("Drone up: WASD fly, Space/Shift up/down, Sprint = fast, mouse = yaw + gimbal, Alt+D to land");
@@ -218,8 +416,7 @@ public final class UserControls {
             }
         }
         while (TRIPOD.consumeClick()) {
-            Shot v = DirectorCamera.active
-                    ? new Shot(DirectorCamera.pos, DirectorCamera.yaw, DirectorCamera.pitch, 0, DirectorCamera.fov) : playerView(p);
+            Shot v = screenView(p);   // a hidden AI camera is not the player's view
             String name = Tripods.nextName();
             Tripods.put(new Tripods.Tripod(name, v.pos(), v.yaw(), v.pitch(), v.fov(), null));
             com.google.gson.JsonObject placed = new com.google.gson.JsonObject();
@@ -231,16 +428,23 @@ public final class UserControls {
             placed.addProperty("pitch", v.pitch());
             placed.addProperty("source", "hotkey");
             com.dreadedzombie.lensbridge.mcp.AgentlinkSupport.publish("lensbridge.tripod_placed", placed);
-            say("Placed " + name + " here (" + Tripods.all().size() + " tripods). Alt+N cycles through them.");
+            say("Placed " + name + " here (" + Tripods.here().size() + " tripods). Alt+N cycles through them.");
         }
         while (CYCLE.consumeClick()) {
-            List<Tripods.Tripod> list = new ArrayList<>(Tripods.all().values());
+            List<Tripods.Tripod> list = Tripods.here();   // this world and dimension only
+            // the position in the cycle is wherever the camera on screen is in the list right now (by name)
+            Tripods.Tripod viewed = viewedTripod();
+            int tripodIndex = -1;
+            for (int i = 0; viewed != null && i < list.size(); i++) {
+                if (list.get(i).name().equals(viewed.name())) {
+                    tripodIndex = i;
+                }
+            }
             if (piloting()) {
                 stopPilot();
             }
             tripodIndex++;
             if (list.isEmpty() || tripodIndex >= list.size()) {
-                tripodIndex = -1;
                 DirectorCamera.release();
                 say(list.isEmpty() ? "No tripods yet - press Alt+T to place one" : "Back to your view");
             } else {
@@ -250,31 +454,51 @@ public final class UserControls {
                     DirectorCamera.preview = true;
                     say("Tripod " + (tripodIndex + 1) + "/" + list.size() + ": " + t.name());
                 } catch (IllegalStateException e) {   // not allowed on this server (Policy)
-                    tripodIndex = -1;
                     say(e.getMessage());
                 }
             }
+        }
+        while (REMOVE.consumeClick()) {
+            say(removeCamera(p));
         }
         while (PROPS.consumeClick()) {
             say(toggleShowCameras() ? "Showing your cameras in the world (Alt+P to hide)" : "Cameras hidden");
         }
         while (MANAGER.consumeClick()) {
-            net.minecraft.util.Util.getPlatform().openUri(Lensbridge.managerUrl());
-            say("Opened the camera manager in your browser");
+            String why = Lensbridge.unavailableReason();
+            if (why != null) {
+                // no working connection: say why in chat instead of opening a dead page (or another program's)
+                p.displayClientMessage(Component.literal("[Lensbridge] " + why), false);
+            } else {
+                net.minecraft.util.Util.getPlatform().openUri(Lensbridge.managerUrl());
+                say("Opened the camera manager in your browser");
+            }
         }
         while (RECORD.consumeClick()) {
             if (Recorder.running()) {
                 Recorder.stop();
                 say("Recording stopped - encoding...");
+            } else if (Recorder.encoding()) {
+                say("Still saving the last recording - try again in a moment");
             } else {
+                if (DirectorCamera.active && !DirectorCamera.preview) {
+                    // a hidden camera (left by an AI) would be what gets recorded, with the screen frozen meanwhile:
+                    // the hotkey records what the player sees
+                    DirectorCamera.release();
+                }
                 String name = "rec_" + Capture.stamp();
-                Recorder.start(name, 30, true, 0, result -> Minecraft.getInstance().execute(() -> {
+                // HUD left as it is: the "REC" line is part of the HUD, and hidden with it the player had no sign that
+                // a recording was running. F1 before Alt+R gives a clean video.
+                boolean started = Recorder.start(name, 30, mc.options.hideGui, 0, (ok, result) -> Minecraft.getInstance().execute(() -> {
                     LocalPlayer pl = Minecraft.getInstance().player;
                     if (pl != null) {
-                        pl.displayClientMessage(Component.literal("[Lensbridge] Saved video: " + result), false);
+                        pl.displayClientMessage(ok ? Component.literal("[Lensbridge] Saved video: " + result)
+                                : Component.literal("[Lensbridge] Recording failed: " + result)
+                                        .withStyle(net.minecraft.ChatFormatting.RED), false);
                     }
                 }));
-                say("Recording (HUD hidden) - press Alt+R to stop");
+                say(started ? "Recording - press Alt+R to stop (F1 first for a video without the HUD)"
+                        : "Still saving the last recording - try again in a moment");
             }
         }
 
@@ -297,7 +521,7 @@ public final class UserControls {
         if (editing == null && DirectorCamera.active && DirectorCamera.preview && mc.screen == null) {
             boolean back = InputConstants.isKeyDown(mc.getWindow(), GLFW.GLFW_KEY_BACKSPACE);
             if (back && !backWas) {
-                exitCameraMode();
+                exitCameraMode(false);
             }
             backWas = back;
         } else if (editing == null) {
@@ -371,7 +595,7 @@ public final class UserControls {
             }
         } else if (DirectorCamera.active && DirectorCamera.preview) {
             lines.add("■ CAMERA " + (DirectorCamera.program != null ? DirectorCamera.program.describe() : "fixed")
-                    + (tripodIndex >= 0 ? "   Alt+N = next camera" : ""));
+                    + (viewedTripod() != null ? "   Alt+N = next camera" : ""));
             lines.add("Esc / Backspace = back to your view");
         }
         if (Recorder.running()) {
