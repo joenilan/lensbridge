@@ -138,7 +138,12 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 - [ ] The inset is a stub on 26.3 (`Inset` answers "not in the 26.3 edition yet"): 26.3 changed the chunk culling,
       the light map and the frame textures it hooks into. `LevelRendererMixin`, `LightTextureMixin` and
       `GameRendererMixin` are not on this branch
-- [ ] Not yet run in a 26.3 game: compiles and builds only
+- [x] Run in a 26.3 game 2026-11-13 (Sodium + Jade, dev-26.3 server): loads with no mixin errors; hidden director
+      shots give the director's view and the player's view is right afterwards; tripod place / shots / remove;
+      `restore`; a 2 s real-time recording; the inset answers with its explanation
+- [ ] Not shown on 26.3: that the camera hand-back keeps Jade on the player's target during hidden shots (the 26.3
+      window can't be grabbed from outside the game, and a HUD capture of a director frame showed no tooltip either
+      way), and what the window shows during hidden shots. Panic key not pressed
 
 ### Known gaps from the 2026-11-13 audit (left for later)
 
