@@ -159,7 +159,8 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
       failed or not; the panic key also ends it. Tested 2026-11-14 in the offline dev game: director-camera
       screenshot with and without it (model, helmet, sword and shield gone, back afterwards), first-person screenshot
       (hand and items gone), a 2 s recording, a 6-frame orbit render, the player back after a failed capture and after
-      the panic key during a recording. Not run: with Sodium/Iris shaders (Iris draws its own shadow pass)
+      the panic key during a recording. In the owner's game 2026-11-14 (Sodium + Iris, shaders on, singleplayer): the player, gear and their shader
+      shadow are all gone with hide_player. Not run on 26.3
 - [ ] Carry to mc/26.3
 
 ## 0.6: promo studio
