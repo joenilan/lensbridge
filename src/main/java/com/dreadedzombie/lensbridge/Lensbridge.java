@@ -18,7 +18,9 @@ import org.slf4j.Logger;
 @Mod(value = Lensbridge.MODID, dist = Dist.CLIENT)
 public final class Lensbridge {
     public static final String MODID = "lensbridge";
-    public static final String VERSION = "0.5.0";
+    /** The installed version, from the mod's own metadata (so it can't go stale again). */
+    public static final String VERSION = net.neoforged.fml.ModList.get().getModContainerById(MODID)
+            .map(c -> c.getModInfo().getVersion().toString()).orElse("unknown");
     public static final Logger LOGGER = LogUtils.getLogger();
     private static BridgeConfig config;
     private static BridgeServer server;
