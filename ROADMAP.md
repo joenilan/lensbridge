@@ -126,6 +126,11 @@ Turn the Mothlight QA stage into a reusable template so any modmaker can make a 
 - [ ] Regenerate `docs/TOOLS.md` with `tools/gen_tool_reference.py` against a running client (hand-edited for this change)
 - [ ] Live test of everything above (owner's go-ahead needed to start a game)
 
+Checked in the owner's game 2026-11-13 (one session): three captures at once all finished with whole pictures (capture
+lock); kicked from the server with an inset open and a previewed director camera: both were gone at the disconnect
+screen and the window showed it (no stuck stealth); a new camera is saved under its world (`mp:localhost`) and
+dimension. Still not run: the panic key (needs a real key press), and the camera list in a second world.
+
 ### Known gaps from the 2026-11-13 audit (left for later)
 
 - [ ] world=sync renders change `tick rate` for everyone on a multiplayer server
@@ -135,6 +140,11 @@ Turn the Mothlight QA stage into a reusable template so any modmaker can make a 
 - [ ] No fallback server if Agentlink rejects the provider
 - [ ] Camera names with spaces can't be removed by command, and a camera can be named "all"
 - [ ] Camera names are still global across worlds (a name used in one world is taken in all); a server reached under two addresses counts as two worlds
+- [ ] Tools share the one director camera: `tripod_shots` (and anything else that borrows it) releases it when done, so
+      a `camera_look_at` + `screenshot` running at the same time from another caller captures the player's view. The
+      capture lock keeps frames from mixing; it does not give each caller its own camera (seen 2026-11-13)
+- [ ] Cameras saved before per-world cameras existed have no world and show in every world
+- [ ] With no world open, `tripod_list` still lists cameras
 - [ ] `restore` does not put back time of day or weather; a freeze made by `stage_build` is undone by `stage_clear`, not `restore`
 
 ## 0.6: promo studio
