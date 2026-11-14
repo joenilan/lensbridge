@@ -8,12 +8,15 @@ import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-/** Full-view watching: the screen is another camera, so the person's own first-person hand isn't drawn over it. */
+/**
+ * No first-person hand over a frame that isn't the person's own view: full-view watching (another camera), and captures
+ * asked to leave the player out ({@code hide_player}).
+ */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
     @WrapOperation(method = "renderItemInHand", require = 0, at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/CameraType;isFirstPerson()Z"))
     private boolean lensbridge$noHandInFullView(CameraType type, Operation<Boolean> original) {
-        return !Inset.fullFrame && original.call(type);
+        return !Inset.fullFrame && !com.dreadedzombie.lensbridge.Capture.hidingPlayer() && original.call(type);
     }
 }

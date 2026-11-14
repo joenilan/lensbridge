@@ -216,6 +216,7 @@ public final class UserControls {
      * gone, screen frozen, camera somewhere else); it does not undo scene changes, /lensbridge restore does that.
      */
     static void panic() {
+        Capture.stopHidingPlayer();
         Minecraft mc = Minecraft.getInstance();
         Capture.abortRunning();   // the capture thread stops at its next frame and runs its own clean-up
         Recorder.stop();

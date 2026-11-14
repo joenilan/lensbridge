@@ -15,7 +15,8 @@ public abstract class EntityRenderDispatcherMixin {
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private <E extends Entity> void lensbridge$hideProps(E entity, Frustum frustum, double camX, double camY, double camZ,
                                                          CallbackInfoReturnable<Boolean> cir) {
-        if (Props.hide(entity) || com.dreadedzombie.lensbridge.cinema.Solo.hides(entity) || com.dreadedzombie.lensbridge.Inset.hides(entity)) {
+        if (Props.hide(entity) || com.dreadedzombie.lensbridge.cinema.Solo.hides(entity) || com.dreadedzombie.lensbridge.Inset.hides(entity)
+                || com.dreadedzombie.lensbridge.Capture.hidingPlayer() && entity == net.minecraft.client.Minecraft.getInstance().player) {
             cir.setReturnValue(false);
         }
     }

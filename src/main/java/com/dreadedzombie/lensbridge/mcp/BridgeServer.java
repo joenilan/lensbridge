@@ -36,6 +36,14 @@ public final class BridgeServer {
     }
 
     public void register(Tool tool) {
+        if (CAPTURES.contains(tool.name()) && tool.schema().has("properties")) {
+            JsonObject p = new JsonObject();
+            p.addProperty("type", "boolean");
+            p.addProperty("description", "Leave your own character out of the picture: model, held items, armour, cape, "
+                    + "name tag, shadow and first-person hand. Shown again when the capture ends, even if it fails. "
+                    + "Default: the config's hidePlayerInCaptures (false).");
+            tool.schema().getAsJsonObject("properties").add("hide_player", p);
+        }
         this.tools.put(tool.name(), tool);
     }
 
@@ -320,6 +328,9 @@ public final class BridgeServer {
 
     /** Run a tool the way every transport does: server rules first, errors become an error result. */
     public static Tool.Result call(Tool tool, JsonObject args) {
+        Boolean hidePlayer = args.has("hide_player") && args.get("hide_player").isJsonPrimitive()
+                ? args.get("hide_player").getAsBoolean() : null;
+        com.dreadedzombie.lensbridge.Capture.HIDE_PLAYER_REQUEST.set(hidePlayer);
         try {
             if (CONTROL.contains(tool.name())) {
                 com.dreadedzombie.lensbridge.Policy.requireControl(tool.name());
@@ -328,8 +339,14 @@ public final class BridgeServer {
         } catch (RuntimeException e) {
             Lensbridge.LOGGER.debug("Lensbridge tool {} failed", tool.name(), e);
             return Tool.Result.error(tool.name() + " failed: " + (e.getMessage() == null ? e.toString() : e.getMessage()));
+        } finally {
+            com.dreadedzombie.lensbridge.Capture.HIDE_PLAYER_REQUEST.remove();
         }
     }
+
+    /** Tools that capture pictures or video: they take hide_player. */
+    private static final java.util.Set<String> CAPTURES = java.util.Set.of("screenshot", "record", "capture_orbit",
+            "capture_path", "capture_program", "stage_shoot", "tripod_shots", "tripod_thumbs", "multicam");
 
     private static JsonObject describe(Tool t) {
         JsonObject o = new JsonObject();

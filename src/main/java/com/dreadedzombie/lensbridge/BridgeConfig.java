@@ -25,6 +25,8 @@ public final class BridgeConfig {
     public boolean keepRunningUnfocused = true;
     /** Capture director-camera shots without showing them in the window (the screen holds its last frame instead of flashing). */
     public boolean stealthCapture = true;
+    /** Leave your own character out of screenshots, recordings and renders unless a capture says otherwise (hide_player). */
+    public boolean hidePlayerInCaptures = false;
     /** Path or name of the ffmpeg binary used to encode videos. */
     public String ffmpeg = "ffmpeg";
 
