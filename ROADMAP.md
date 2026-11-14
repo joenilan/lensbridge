@@ -170,7 +170,8 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 
 - [x] `hide_player` on every capture tool (owner's request, 2026-11-14: "maybe hide me when screenshotting or using
       lensbridge?"), config default `hidePlayerInCaptures`. Held by the capture lock, so it ends with the capture,
-      failed or not; the panic key also ends it. NOT yet run in a game
+      failed or not; the panic key also ends it. Tested on 1.21.11 (offline dev game, and the owner's game with Iris
+      shaders: shader shadow gone too). On 26.3: same code, builds; not run in a 26.3 game
 - [ ] Carry to mc/26.3
 
 ## 0.6: promo studio
