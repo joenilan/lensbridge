@@ -76,6 +76,11 @@ public final class Capture {
         LOCK.unlock();
     }
 
+    /** A capture sequence (a recording, a render, screenshots, thumbnails) is running. Any thread. */
+    public static boolean busy() {
+        return LOCK.isLocked();
+    }
+
     /** Panic key: make the capture that is running (if any) stop at its next frame. Any thread. */
     public static void abortRunning() {
         abort = true;

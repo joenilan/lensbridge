@@ -126,6 +126,11 @@ Turn the Mothlight QA stage into a reusable template so any modmaker can make a 
 - [ ] Regenerate `docs/TOOLS.md` with `tools/gen_tool_reference.py` against a running client (hand-edited for this change)
 - [ ] Live test of everything above (owner's go-ahead needed to start a game)
 
+Panic key checked 2026-11-13 (through the `press` tool): a 20 s recording from a previewed camera stopped 3 s in, the
+camera was released and the chat line appeared. The same session showed real-time recordings were still throttled by
+Dynamic FPS (44 fresh frames in 6 s): the frame guard now covers every capture sequence (`Capture.busy()`); 118 of 120
+fresh frames afterwards with the window in the background.
+
 Checked in the owner's game 2026-11-13 (one session): three captures at once all finished with whole pictures (capture
 lock); kicked from the server with an inset open and a previewed director camera: both were gone at the disconnect
 screen and the window showed it (no stuck stealth); a new camera is saved under its world (`mp:localhost`) and

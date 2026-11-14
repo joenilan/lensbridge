@@ -27,7 +27,9 @@ public final class FrameGuard {
 
     /** True while Lensbridge needs every frame really drawn. Any thread. */
     public static boolean needed() {
-        return Stealth.depth() > 0 || Recorder.running() || Game.waiting()
+        // Capture.busy(): every capture sequence holds the capture lock, including real-time recordings, which grab
+        // on a clock and never wait for frames
+        return Stealth.depth() > 0 || Recorder.running() || Capture.busy() || Game.waiting()
                 || Inset.wantsFrame() || System.currentTimeMillis() < until;
     }
 
