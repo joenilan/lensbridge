@@ -1,6 +1,6 @@
 # Lensbridge tool reference
 
-*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (73 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
+*Generated from a running Lensbridge by `tools/gen_tool_reference.py` (75 tools). Every tool is available over MCP (`tools/call`) and REST (`POST /api/<tool>` with the arguments as JSON).*
 
 ## Observe
 
@@ -678,6 +678,14 @@ Showcase Stage: frame and shoot every exhibit of the last stage_build - mobs aut
 ### `stage_clear`
 
 Remove the last Showcase Stage (blocks, mobs, item frames) and unfreeze the world.
+
+### `test_world`
+
+A throwaway world for testing, so nobody's real world is touched. action=create (default): leave the current world (saving it) and create and enter a fresh creative world with cheats on, named "Agent test <date time>" (flat by default: nothing in the way; flat:false for normal terrain). action=leave: back to the title screen. action=delete: delete throwaway worlds (name:"all" or one name); only worlds named "Agent test ..." can be deleted, and not the one that is open. action=list: the throwaway worlds there are. Delete it when done.
+
+### `test_skin`
+
+Draw the player with a test skin for checking worn models (hats, hoods, backpacks): the skin's outer layers (hat, jacket, sleeves, trouser layers) are fully opaque, in a bright chequer over a dark base, so anything that clips into or flickers against them shows up. Only on this computer: nobody else sees it. on=false puts your own skin back (it also goes back when the game restarts).
 
 ### `server_tools`
 

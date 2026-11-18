@@ -161,7 +161,11 @@ tools instead of one-off scripts.
       `labelled_sheet.png` (name and caption bars, `sheet_columns`)
 - [x] `test_skin`: opaque chequered outer skin layers for clipping checks (local player only)
 - [x] `test_world`: create / leave / delete / list throwaway "Agent test ..." worlds, no menu clicking
-- [ ] Run in the offline dev game (waiting for the owner's game to close)
+- [x] Run 2026-11-18 in the offline dev game: test_world created and entered a flat creative world in 5 s from the
+      title screen (commands worked), refused to delete "New World" and the open world, then left and deleted it; a
+      stage of four vanilla mobs with home scenes (fox on podzol with berries, allay flying over moss, frog on mud,
+      strider on netherrack) and the labelled 2x2 sheet; test_skin on, off. Not run: with the insect mods (their
+      flying butterflies), with Sodium/Iris
 - [ ] Carry to mc/26.3
 
 ## 0.6.4
