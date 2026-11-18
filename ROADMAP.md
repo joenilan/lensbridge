@@ -180,7 +180,7 @@ tools instead of one-off scripts.
       stage of four vanilla mobs with home scenes (fox on podzol with berries, allay flying over moss, frog on mud,
       strider on netherrack) and the labelled 2x2 sheet; test_skin on, off. Not run: with the insect mods (their
       flying butterflies), with Sodium/Iris
-- [ ] Carry to mc/26.3
+- [x] Carried to mc/26.3 (with 0.6.3 and 0.6.4): builds; not run in a 26.3 game
 
 ## 0.6.4
 
