@@ -6,6 +6,7 @@ import com.dreadedzombie.lensbridge.DirectorCamera;
 import com.dreadedzombie.lensbridge.Game;
 import com.dreadedzombie.lensbridge.InputDriver;
 import com.dreadedzombie.lensbridge.Lensbridge;
+import com.dreadedzombie.lensbridge.PlayerSafety;
 import com.dreadedzombie.lensbridge.mcp.BridgeServer;
 import com.dreadedzombie.lensbridge.mcp.Tool;
 import com.dreadedzombie.lensbridge.mcp.Tool.Args;
@@ -83,7 +84,7 @@ public final class Tools {
     public static void registerAll(BridgeServer s) {
         // ================================================================== observe
         s.register(new Tool("status", "Game state: in-world?, open screen, player position/rotation/dimension/health/"
-                + "gamemode, time, weather, FPS, window size, server, director camera, capture folder.",
+                + "gamemode/flight, time, weather, FPS, window size, server, director camera, capture folder.",
                 new Schema().build(), a -> Result.text(Game.call(Tools::statusText))));
 
         s.register(new Tool("screenshot", "Capture the game view (the game's own framebuffer only - never the desktop). "
@@ -134,15 +135,25 @@ public final class Tools {
 
         // ================================================================== act
         s.register(new Tool("command", "Run a command as the player (no leading slash needed). Needs op for most commands. "
-                + "Feedback appears in chat_log.",
+                + "Feedback appears in chat_log. A tp/teleport starts creative flight first when the player may fly, so a "
+                + "staging teleport cannot leave them falling; external teleports (datapacks, command blocks) are caught "
+                + "the same way.",
                 new Schema().req("command", "string", "e.g. 'time set midnight'").build(),
                 a -> {
                     String cmd = a.str("command").replaceFirst("^/", "");
                     refuseAgentlinkConfirm(cmd);
                     long before = ChatLog.since(Long.MAX_VALUE - 1).size();
+                    // A staging teleport must not turn into a fall: start flying before the command is sent.
+                    boolean teleports = PlayerSafety.teleports(cmd);
+                    String safety = teleports ? Game.call(() -> PlayerSafety.hover(mc())) : null;
                     Game.run(() -> player().connection.sendCommand(cmd));
                     Game.sleep(250);
-                    return Result.text("Sent /" + cmd + " (check chat_log for feedback)");
+                    if (teleports) {
+                        // The server may sync the player back after the jump; make sure they are still flying.
+                        Game.call(() -> PlayerSafety.hover(mc()));
+                    }
+                    return Result.text("Sent /" + cmd + " (check chat_log for feedback)"
+                            + (safety == null ? "" : " [" + safety + "]"));
                 }));
 
         s.register(new Tool("chat", "Send a chat message as the player.",
@@ -595,6 +606,7 @@ public final class Tools {
         sb.append("Health ").append(fmt(p.getHealth())).append('/').append(fmt(p.getMaxHealth()))
                 .append(" food ").append(p.getFoodData().getFoodLevel())
                 .append(" mode ").append(mc.gameMode != null ? mc.gameMode.getPlayerMode().getName() : "?")
+                .append(p.getAbilities().flying ? " (flying)" : "")
                 .append(" riding ").append(p.getVehicle() == null ? "nothing" : BuiltInRegistries.ENTITY_TYPE.getKey(p.getVehicle().getType()))
                 .append('\n');
         long day = mc.level.getOverworldClockTime() % 24000L;

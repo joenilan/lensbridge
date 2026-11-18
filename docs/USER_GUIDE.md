@@ -161,6 +161,7 @@ You see the same cameras in the Camera Manager, and you can take control of any 
   token is in `config/agentlink.json`. The first time, it copies your Lensbridge token, so nothing needs reconnecting.
 - Screenshots only ever contain the **game's** picture, never your desktop or other windows.
 - The assistant's cameras are invisible to you by default. They render behind the scenes, so your screen doesn't jump around. If you *want* to watch, the assistant can turn on preview.
+- When the assistant teleports you for a shot, it puts you in **creative flight** first (if you're allowed to fly), so you don't fall. Double-tap jump to land. The same guard catches a datapack or command block that moves you while Lensbridge is running.
 
 Once connected, the assistant reads Lensbridge's own guide by itself (the `guide` tool), so you can just tell it what you want: "set up three cameras around my build", "orbit the dragon at sunset", "show me how my new mob looks".
 
@@ -243,6 +244,12 @@ Lensbridge keeps to a server's rules by default, because two of its features wou
 - **Free cameras** (the drone, looking through your cameras, AI director shots) can see through walls.
 - **Letting an AI act for you** (moving, looking, pressing keys, clicking menus, chatting, running commands) is a bot, as far as most servers are concerned.
 
+Lensbridge is a client mod, so a server can't stop what it draws locally; the parts that touch the world (commands,
+chat, input) go through the server and its normal permissions. That's the same position as freecam, minimap or replay
+mods: some servers allow them, some ban them, and owners enforce that with a mod list or anti-cheat. Lensbridge's own
+defaults are the conservative part — op-only on servers — and a server that installs Lensbridge can set the rules
+explicitly and write down who used them.
+
 | Where you are | Free cameras | AI acting for you |
 |---|---|---|
 | Singleplayer, or hosting a LAN world | Yes | Yes |
@@ -260,7 +267,12 @@ freeCameras = "OPS"   # OPS (operators and spectators), EVERYONE or NOBODY
 aiControl = "OPS"     # OPS, EVERYONE or NOBODY
 ```
 
-Changes apply within a few seconds, without a restart. With a permission mod such as **LuckPerms** you can also allow or deny it per player or group with the permission nodes `lensbridge.free_cameras` and `lensbridge.ai_control`. Commands an AI runs still need their normal permissions either way.
+These defaults are deliberate. Lensbridge is for mod authors, cinematic shoots and server staff - not for ordinary
+players on a public server. Leave both at `OPS` there; use `EVERYONE` only on a private or creative server where every
+player is trusted (ordinary players otherwise get neither free cameras nor AI control). A permission mod such as
+**LuckPerms** can allow or deny it per player or group with the nodes `lensbridge.free_cameras` and
+`lensbridge.ai_control`. Commands an AI runs still need their normal permissions either way. Changes apply within a few
+seconds, without a restart.
 
 ### Your server's tools for your staff's AI
 

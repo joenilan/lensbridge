@@ -166,6 +166,21 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 - [ ] With no world open, `tripod_list` still lists cameras
 - [ ] `restore` does not put back time of day or weather; a freeze made by `stage_build` is undone by `stage_clear`, not `restore`
 
+## 0.6.4
+
+- [x] A teleport that bypasses `command` — a datapack function, a command block, a plugin — is caught by a
+      client-tick position-jump guard (more than 8 blocks in one tick), which starts creative flight before the fall.
+      Tested 2026-11-15 in the offline dev client: a command block ran `tp @a 300 60 30` (not through `command`),
+      Lensbridge logged the catch, and the player stayed at y=60 flying. Not run on a server or 26.3.
+- [ ] Carry to mc/26.3
+
+## 0.6.3
+
+- [x] `command` starts creative flight before a tp/teleport (including `execute ... run tp`), so a staging teleport
+      cannot drop a player who may fly; survival/adventure players are left alone and the tool result says which. Not
+      run against a live client yet.
+- [ ] Carry to mc/26.3
+
 ## 0.6.2
 
 - [x] Public client API `api.LensbridgeClient` (`isPlayerHidden(Player)`, `isEntityHidden(Entity)`), asked for by the

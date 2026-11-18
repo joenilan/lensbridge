@@ -6,7 +6,7 @@
 
 ### `status`
 
-Game state: in-world?, open screen, player position/rotation/dimension/health/gamemode, time, weather, FPS, window size, server, director camera, capture folder.
+Game state: in-world?, open screen, player position/rotation/dimension/health/gamemode/flight, time, weather, FPS, window size, server, director camera, capture folder.
 
 ### `screenshot`
 
@@ -68,7 +68,7 @@ List recent captures (screenshots, videos, frame folders) with full paths.
 
 ### `command`
 
-Run a command as the player (no leading slash needed). Needs op for most commands. Feedback appears in chat_log.
+Run a command as the player (no leading slash needed). Needs op for most commands. Feedback appears in chat_log. A tp/teleport starts creative flight first when the player may fly, so a staging teleport cannot leave them falling; external teleports (datapacks, command blocks) are caught the same way.
 
 | Argument | Type | Required | Notes |
 |---|---|---|---|
