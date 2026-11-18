@@ -21,7 +21,6 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
-import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.level.storage.LevelStorageSource;
@@ -88,16 +87,16 @@ public final class TestTools {
         String name = PREFIX + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss"));
         Game.call(() -> {
             Minecraft mc = Minecraft.getInstance();
-            GameRules rules = new GameRules(WorldDataConfiguration.DEFAULT.enabledFeatures());
-            LevelSettings settings = new LevelSettings(name, GameType.CREATIVE, false, Difficulty.PEACEFUL, true, rules,
-                    WorldDataConfiguration.DEFAULT);
+            // 26.x: difficulty settings in their own record, game rules no longer part of LevelSettings
+            LevelSettings settings = new LevelSettings(name, GameType.CREATIVE,
+                    new LevelSettings.DifficultySettings(Difficulty.PEACEFUL, false, false), true, WorldDataConfiguration.DEFAULT);
             WorldOptions options = new WorldOptions(WorldOptions.randomSeed(), !flat, false);
             mc.createWorldOpenFlows().createFreshLevel(name, settings, options,
-                    flat ? WorldPresets::createFlatWorldDimensions : WorldPresets::createNormalWorldDimensions, new TitleScreen());
+                    flat ? WorldPresets::createTestWorldDimensions : WorldPresets::createNormalWorldDimensions, new TitleScreen());
             return null;
         });
         for (int i = 0; i < 240; i++) {   // up to a minute for the world to generate and the player to arrive
-            if (Boolean.TRUE.equals(Game.call(() -> Minecraft.getInstance().player != null && Minecraft.getInstance().screen == null))) {
+            if (Boolean.TRUE.equals(Game.call(() -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null))) {
                 Game.sleep(1500);   // terrain around the player
                 return "Created and entered \"" + name + "\" (creative, cheats on, " + (flat ? "flat" : "normal terrain")
                         + "). Delete it when done: test_world action=delete.";
