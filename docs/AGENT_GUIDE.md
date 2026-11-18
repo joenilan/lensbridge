@@ -123,6 +123,18 @@ stage_clear {}                                     # remove it, unfreeze (or sta
 
 - Variants that registries can't know about go in `extra`: `{kind:"mob", id:"mymod:dragon", nbt:"Color:2", label:"Blue dragon"}` (nbt without braces). Leave the generic entry out with `exclude`.
 - `elevation` (default 38°): flat subjects (wings, rugs) read best at 40-55°, upright mobs at 15-25°.
+- **Home scenes** for originals and variants: give an `extra` mob its own `floor` (a pad under it), `props`
+  (`[{dx:1, dz:2, block:"minecraft:obsidian"}]`: dx to the right, dz behind it as the camera sees it, dy up from the
+  floor), `caption` (default: the floor's name), `flying:true` (held in the air, shot from 60° above so open wings
+  show) and its own `elevation`. Exhibits with a home are spaced `home_spacing` (default 14) apart so neighbours stay out
+  of frame. `stage_shoot` then also writes `labelled_sheet.png`: a grid (`sheet_columns`, default 2 up to four shots,
+  else 4) with each exhibit's name and caption in a bar under it. Example:
+  `stage_build {"namespace":"scarablight", "include":[], "extra":[{"kind":"mob","id":"scarablight:beetle","nbt":"Species:\"obsidian_stag\"","label":"Obsidian Stag","floor":"minecraft:netherrack","caption":"Nether wastes","props":[{"dx":1,"dz":2,"block":"minecraft:obsidian"}]}]}`
+- **Throwaway test world:** `test_world {}` saves and leaves the current world and creates and enters a fresh creative
+  world with cheats, named "Agent test <date time>" (flat; `flat:false` for terrain). `test_world {"action":"delete"}`
+  removes it again afterwards (only "Agent test ..." worlds can be deleted, never the open one; `action:"leave"` first).
+- **Test skin:** `test_skin {}` draws the player with fully opaque, brightly chequered outer skin layers, to catch hats,
+  hoods and backpacks that clip into the skin's outer layer; `test_skin {"on":false}` puts the real skin back.
 - The stage goes just under the build limit above the player. It **refuses** to build into blocks, entities or unloaded chunks; pick other `x`/`y`/`z` rather than passing `force:true` (which clears whatever is there). A new `stage_build` replaces the previous stage; `stage_clear` also releases the chunks it forceloaded.
 - Check the contact sheet, then open single shots for anything that looks off.
 

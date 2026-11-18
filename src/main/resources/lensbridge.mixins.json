@@ -3,6 +3,7 @@
   "package": "com.dreadedzombie.lensbridge.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "AbstractClientPlayerMixin",
     "CameraMixin",
     "DynamicFpsMixin",
     "DeltaTrackerTimerMixin",
