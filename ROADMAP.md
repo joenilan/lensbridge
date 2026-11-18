@@ -166,6 +166,18 @@ dimension. Still not run: the panic key (needs a real key press), and the camera
 - [ ] With no world open, `tripod_list` still lists cameras
 - [ ] `restore` does not put back time of day or weather; a freeze made by `stage_build` is undone by `stage_clear`, not `restore`
 
+## 0.6.5
+
+Asked for by the insect-family thread with the owner's approval (2026-11-18): promo shoots entirely with Lensbridge
+tools instead of one-off scripts.
+
+- [x] Showcase Stage home scenes: an exhibit's own `floor`, `props`, `caption`, `flying`, `elevation`; `home_spacing`;
+      `labelled_sheet.png` (name and caption bars, `sheet_columns`)
+- [x] `test_skin`: opaque chequered outer skin layers for clipping checks (local player only)
+- [x] `test_world`: create / leave / delete / list throwaway "Agent test ..." worlds, no menu clicking
+- [ ] Run in the offline dev game (waiting for the owner's game to close)
+- [ ] Carry to mc/26.3
+
 ## 0.6.4
 
 - [x] A teleport that bypasses `command` — a datapack function, a command block, a plugin — is caught by a

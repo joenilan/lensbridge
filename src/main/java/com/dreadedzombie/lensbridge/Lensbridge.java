@@ -85,6 +85,7 @@ public final class Lensbridge {
         com.dreadedzombie.lensbridge.tools.DroneTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ManagerTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ShowcaseTools.registerAll(server);
+        com.dreadedzombie.lensbridge.tools.TestTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ServerAgentTools.registerAll(server);
         com.dreadedzombie.lensbridge.tools.ServerAgentTools.registerInbox(server);
         com.dreadedzombie.lensbridge.tools.ServerAgentTools.registerInset(server);

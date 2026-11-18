@@ -44,8 +44,28 @@ public final class ShowcaseTools {
     private ShowcaseTools() {
     }
 
-    /** One exhibit. kind: mob / block / item. x,y,z = where it stands; w,h = rough size in blocks. */
-    record Exhibit(String kind, String id, String label, String nbt, double x, double y, double z, double w, double h) {
+    /**
+     * One exhibit. kind: mob / block / item. x,y,z = where it stands; w,h = rough size in blocks. home: optional little
+     * scene of its own (floor, props, caption, flying, elevation), or null.
+     */
+    record Exhibit(String kind, String id, String label, String nbt, double x, double y, double z, double w, double h,
+                   JsonObject home) {
+        Exhibit(String kind, String id, String label, String nbt, double x, double y, double z, double w, double h) {
+            this(kind, id, label, nbt, x, y, z, w, h, null);
+        }
+
+        Exhibit at(double nx, double ny, double nz) {
+            return new Exhibit(kind, id, label, nbt, nx, ny, nz, w, h, home);
+        }
+
+        boolean flying() {
+            return home != null && home.has("flying") && home.get("flying").getAsBoolean();
+        }
+
+        String caption() {
+            return home != null && home.has("caption") ? home.get("caption").getAsString() : "";
+        }
+
         JsonObject json() {
             JsonObject o = new JsonObject();
             o.addProperty("kind", kind);
@@ -56,6 +76,9 @@ public final class ShowcaseTools {
             o.addProperty("z", z);
             o.addProperty("w", w);
             o.addProperty("h", h);
+            if (home != null) {
+                o.add("home", home);
+            }
             return o;
         }
     }
@@ -101,7 +124,14 @@ public final class ShowcaseTools {
                         .prop("include", "array", "Kinds to include: mob, block, item (default all three)")
                         .prop("exclude", "array", "Ids to leave out, e.g. [\"mothlight:moth_sheet\"]")
                         .prop("extra", "array", "Extra exhibits, e.g. variants: [{kind:'mob', id:'mothlight:wild_moth', "
-                                + "nbt:'Species:\"luna\"', label:'Luna moth'}] (nbt without braces)")
+                                + "nbt:'Species:\"luna\"', label:'Luna moth'}] (nbt without braces). A mob can bring its own "
+                                + "home scene: floor:'minecraft:netherrack' (a 7x6 pad under it), props:[{dx:1, dz:2, "
+                                + "block:'minecraft:obsidian'}] (dx to the right, dz behind it as the camera sees it, dy up "
+                                + "from the floor, default 0), caption:'Nether wastes' (on the labelled sheet; default the "
+                                + "floor's name), flying:true (held in the air, shot from above so open wings show), "
+                                + "elevation:55 (camera angle for this one)")
+                        .prop("home_spacing", "integer", "Blocks between exhibits that have a home scene (default 14, so "
+                                + "neighbours stay out of frame)")
                         .prop("backdrop", "string", "gray (default) / black / white / chroma / any block id")
                         .prop("per_row", "integer", "Exhibits per row (default 10)")
                         .prop("x", "number", "Stage origin (default: the player's x/z, near the top of the world)")
@@ -172,7 +202,25 @@ public final class ShowcaseTools {
                                 EntityType<?> t = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse(id));
                                 return t == null ? new double[] {1, 1} : new double[] {t.getDimensions().width(), t.getDimensions().height()};
                             });
-                            Exhibit ex = new Exhibit(kind, id, label, nbt, 0, 0, 0, wh[0], wh[1]);
+                            JsonObject home = null;
+                            if (o.has("floor") || o.has("props") || o.has("caption") || o.has("flying") || o.has("elevation")) {
+                                home = new JsonObject();
+                                for (String key : new String[] {"floor", "props", "caption", "flying", "elevation", "hover"}) {
+                                    if (o.has(key)) {
+                                        home.add(key, o.get(key));
+                                    }
+                                }
+                                if (!home.has("caption") && home.has("floor")) {
+                                    String floor = home.get("floor").getAsString();
+                                    String name = Game.call(() -> {
+                                        Identifier fid = Identifier.tryParse(floor.contains(":") ? floor : "minecraft:" + floor);
+                                        return fid != null && BuiltInRegistries.BLOCK.containsKey(fid)
+                                                ? BuiltInRegistries.BLOCK.getValue(fid).getName().getString() : floor;
+                                    });
+                                    home.addProperty("caption", name);
+                                }
+                            }
+                            Exhibit ex = new Exhibit(kind, id, label, nbt, 0, 0, 0, wh[0], wh[1], home);
                             (kind.equals("block") ? blocks : kind.equals("item") ? items : mobs).add(ex);
                         }
                     }
@@ -189,8 +237,10 @@ public final class ShowcaseTools {
                     // default: just under the build limit, far above anything people build (and checked below)
                     int oy = (int) Math.floor(a.num("y", top - height - 2));
                     int oz = (int) Math.floor(a.num("z", p.z));
-                    double spacing = Math.max(3, maxMob * 2 + 1);
-                    int rowDepth = (int) Math.ceil(Math.max(9, maxMob * 4 + 5));
+                    boolean homes = mobs.stream().anyMatch(e -> e.home() != null);
+                    // a home scene needs room around it, so neighbours (and their scenes) stay out of the frame
+                    double spacing = homes ? Math.max(8, a.i("home_spacing", 14)) : Math.max(3, maxMob * 2 + 1);
+                    int rowDepth = homes ? Math.max(12, a.i("home_spacing", 14)) : (int) Math.ceil(Math.max(9, maxMob * 4 + 5));
                     List<Exhibit> placed = new ArrayList<>();
                     List<String> build = new ArrayList<>();
                     int z = oz;
@@ -200,10 +250,11 @@ public final class ShowcaseTools {
                         List<Exhibit> row = mobs.subList(i, Math.min(mobs.size(), i + perRow));
                         for (int k = 0; k < row.size(); k++) {
                             Exhibit e = row.get(k);
-                            double x = ox + 2 + k * spacing;
-                            placed.add(new Exhibit("mob", e.id(), e.label(), e.nbt(), x + 0.5, oy + 1, z + 0.5, e.w(), e.h()));
+                            double x = ox + (homes ? 5 : 2) + k * spacing;
+                            double hover = e.flying() ? (e.home().has("hover") ? e.home().get("hover").getAsDouble() : 0.8) : 0;
+                            placed.add(e.at(x + 0.5, oy + 1 + hover, z + 0.5));
                         }
-                        widest = Math.max(widest, (int) Math.ceil(row.size() * spacing) + 4);
+                        widest = Math.max(widest, (int) Math.ceil(row.size() * spacing) + (homes ? 8 : 4));
                         z += rowDepth;
                     }
                     // blocks, on plinths
@@ -278,6 +329,28 @@ public final class ShowcaseTools {
                             build.add(wall);
                         }
                     }
+                    // home scenes: a pad of the exhibit's own floor and its props (behind it as the camera sees it: -z)
+                    for (Exhibit e : placed) {
+                        if (e.home() == null) {
+                            continue;
+                        }
+                        int ex = (int) Math.floor(e.x());
+                        int ez = (int) Math.floor(e.z());
+                        if (e.home().has("floor")) {
+                            build.add(String.format("fill %d %d %d %d %d %d %s", ex - 3, oy, ez - 2, ex + 3, oy, ez + 3,
+                                    e.home().get("floor").getAsString()));
+                        }
+                        if (e.home().has("props")) {
+                            for (JsonElement pe : e.home().getAsJsonArray("props")) {
+                                JsonObject pr = pe.getAsJsonObject();
+                                int dx = pr.has("dx") ? pr.get("dx").getAsInt() : 0;
+                                int dy = pr.has("dy") ? pr.get("dy").getAsInt() : 0;
+                                int dz = pr.has("dz") ? pr.get("dz").getAsInt() : 0;
+                                build.add(String.format("setblock %d %d %d %s", ex + dx, oy + 1 + dy, ez - dz,
+                                        pr.get("block").getAsString()));
+                            }
+                        }
+                    }
                     for (Exhibit e : placed) {
                         switch (e.kind()) {
                             case "mob" -> build.add(String.format(Locale.ROOT,
@@ -316,7 +389,10 @@ public final class ShowcaseTools {
                 new Schema().prop("orbits", "boolean", "Also render a 4 s turntable (MP4) of every mob").prop("fov", "number",
                         "Default 45").prop("clear", "boolean", "Remove the stage afterwards (like stage_clear)")
                         .prop("elevation", "number", "Camera angle above mobs in degrees (default 38; "
-                        + "flat subjects like wings read best around 40-55, upright mobs around 15-25)").build(),
+                        + "flat subjects like wings read best around 40-55, upright mobs around 15-25; an exhibit's own "
+                        + "elevation, or flying:true (60), wins)")
+                        .prop("sheet_columns", "integer", "Columns of the labelled sheet (default: 2 for up to 4 shots, "
+                                + "else 4); every shot gets a bar with its name and home caption").build(),
                 a -> {
                     List<Exhibit> list;
                     synchronized (STAGE) {
@@ -334,6 +410,8 @@ public final class ShowcaseTools {
                         // first run: nothing to clear
                     }
                     List<Path> shots = new ArrayList<>();
+                    List<String> names = new ArrayList<>();
+                    List<String> captions = new ArrayList<>();
                     StringBuilder md = new StringBuilder("# " + stageName + " showcase\n\n");
                     // every mob on the stage, so each shot can hide the others (see Solo)
                     java.util.Map<Exhibit, Integer> mobIds = new java.util.HashMap<>();
@@ -385,8 +463,11 @@ public final class ShowcaseTools {
                                         half = Math.max(0.08, m.halfSize());
                                     }
                                     double dist = Math.max(0.55, half / (0.62 * Math.tan(Math.toRadians(fov / 2))));
+                                    // an exhibit's own angle; flying ones from well above, so open wings show
+                                    double el = e.home() != null && e.home().has("elevation") ? e.home().get("elevation").getAsDouble()
+                                            : e.flying() ? 60 : elev;
                                     aim = base;
-                                    cam = base.add(0, dist * Math.sin(Math.toRadians(elev)), dist * Math.cos(Math.toRadians(elev)));
+                                    cam = base.add(0, dist * Math.sin(Math.toRadians(el)), dist * Math.cos(Math.toRadians(el)));
                                 }
                                 case "block" -> {
                                     aim = new Vec3(e.x() + 0.5, e.y() + 0.45, e.z() + 0.5);
@@ -402,6 +483,8 @@ public final class ShowcaseTools {
                             String file = e.label().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_|_$", "");
                             Path out = Capture.grab(dir.resolve(String.format("%02d_%s.png", shots.size() + 1, file)), 6);
                             shots.add(out);
+                            names.add(e.label());
+                            captions.add(e.caption());
                             md.append("## ").append(e.label()).append("\n\n`").append(e.id()).append("`\n\n![")
                                     .append(e.label()).append("](").append(out.getFileName()).append(")\n\n");
                         }
@@ -455,6 +538,8 @@ public final class ShowcaseTools {
                         }
                     }
                     Path sheet = Capture.contactSheet(shots, shots.size(), dir.resolve("contact_sheet.png"));
+                    int cols = a.has("sheet_columns") ? Math.max(1, a.i("sheet_columns", 2)) : shots.size() <= 4 ? 2 : 4;
+                    Path labelled = Capture.labelledSheet(shots, names, captions, cols, dir.resolve("labelled_sheet.png"));
                     try {
                         if (!orbits.isEmpty()) {
                             md.append("## Turntables\n\n");
@@ -467,8 +552,8 @@ public final class ShowcaseTools {
                     if (a.bool("clear", false)) {
                         com.dreadedzombie.lensbridge.Lensbridge.server().tools().get("stage_clear").handler().apply(new Tool.Args(new JsonObject()));
                     }
-                    return Result.text(String.format("Shot %d exhibits%s -> %s (contact_sheet.png, index.md)", shots.size(),
-                            orbits.isEmpty() ? "" : " and " + orbits.size() + " turntables", dir)).addImage(sheet, 1280);
+                    return Result.text(String.format("Shot %d exhibits%s -> %s (contact_sheet.png, labelled_sheet.png, index.md)",
+                            shots.size(), orbits.isEmpty() ? "" : " and " + orbits.size() + " turntables", dir)).addImage(labelled, 1280);
                 }));
 
         s.register(new Tool("stage_clear", "Remove the last Showcase Stage (blocks, mobs, item frames) and unfreeze the world.",

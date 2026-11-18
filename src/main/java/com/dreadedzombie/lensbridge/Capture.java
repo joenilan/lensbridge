@@ -281,6 +281,58 @@ public final class Capture {
         }
     }
 
+    /**
+     * A sheet of shots in a grid, each with a bar under it: the name in bold and a caption (its home, say) beside it.
+     * For mod pages and listings. cols: shots per row.
+     */
+    public static Path labelledSheet(List<Path> shots, List<String> names, List<String> captions, int cols, Path out) {
+        try {
+            if (shots.isEmpty()) {
+                throw new IllegalArgumentException("No shots for the sheet");
+            }
+            int c = Math.max(1, Math.min(cols, shots.size()));
+            int rows = (int) Math.ceil((double) shots.size() / c);
+            int tw = 640;
+            BufferedImage first = ImageIO.read(shots.get(0).toFile());
+            int th = (int) Math.round(tw * (double) first.getHeight() / first.getWidth());
+            int bar = 64;
+            int gap = 8;
+            int w = c * tw + (c + 1) * gap;
+            int h = rows * (th + bar) + (rows + 1) * gap;
+            BufferedImage sheet = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = sheet.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setColor(new java.awt.Color(0x16, 0x18, 0x1d));
+            g.fillRect(0, 0, w, h);
+            java.awt.Font nameFont = new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, 26);
+            java.awt.Font capFont = new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN, 19);
+            for (int i = 0; i < shots.size(); i++) {
+                int x = gap + (i % c) * (tw + gap);
+                int y = gap + (i / c) * (th + bar + gap);
+                BufferedImage img = i == 0 ? first : ImageIO.read(shots.get(i).toFile());
+                g.drawImage(img, x, y, tw, th, null);
+                g.setColor(new java.awt.Color(0x24, 0x27, 0x2f));
+                g.fillRect(x, y + th, tw, bar);
+                String name = i < names.size() ? names.get(i) : "";
+                String cap = i < captions.size() ? captions.get(i) : "";
+                g.setColor(java.awt.Color.WHITE);
+                g.setFont(nameFont);
+                g.drawString(name, x + 16, y + th + 28);
+                if (!cap.isBlank()) {
+                    g.setColor(new java.awt.Color(0xb8, 0xbe, 0xca));
+                    g.setFont(capFont);
+                    g.drawString(cap, x + 16, y + th + 52);
+                }
+            }
+            g.dispose();
+            ImageIO.write(sheet, "png", out.toFile());
+            return out;
+        } catch (IOException e) {
+            throw new RuntimeException("Labelled sheet failed", e);
+        }
+    }
+
     /** Encode a numbered PNG sequence (frame_00000.png ...) with ffmpeg. Returns the output file. */
     public static Path encode(Path frameDir, int fps, Path out, boolean gif) {
         List<String> cmd = new ArrayList<>(List.of(Lensbridge.config().ffmpeg, "-y", "-loglevel", "error",
