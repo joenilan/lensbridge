@@ -44,11 +44,13 @@ public final class LensbridgeServer {
     public static final ModConfigSpec.EnumValue<Who> CAMERAS = B
             .comment("Who may use Lensbridge's free cameras here: the drone, looking through placed cameras, director shots.",
                     "OPS = operators (and players in spectator mode), EVERYONE, or NOBODY.",
+                    "On a public server leave this at OPS: EVERYONE lets ordinary players detach a camera and see through walls.",
                     "A permission mod can override this per player with the node lensbridge.free_cameras.")
             .defineEnum("freeCameras", Who.OPS);
     public static final ModConfigSpec.EnumValue<Who> CONTROL = B
             .comment("Who may let an AI assistant act for them through Lensbridge here: move, look, press keys, click",
                     "menus, chat and run commands (commands still need their normal permissions). OPS, EVERYONE or NOBODY.",
+                    "On a public server leave this at OPS: EVERYONE lets ordinary players let an AI drive them.",
                     "Permission node: lensbridge.ai_control.")
             .defineEnum("aiControl", Who.OPS);
     public static final ModConfigSpec.EnumValue<Who> SERVER_AGENT = B

@@ -22,7 +22,7 @@ Read **[docs/AGENT_GUIDE.md](docs/AGENT_GUIDE.md)** first, then use [docs/TOOLS.
   | `cinema/` | `Shot`, `Target`, `CameraPath`, `CameraProgram` (lock/orbit/pan/rail/follow/dolly), `Drone`, `Tripods` |
   | `mixin/` | Camera override (`CameraMixin`), stealth present-skipping (`MinecraftMixin`, `RenderSystemMixin`), vanilla-only chunk bookkeeping for inset frames (`LevelRendererMixin`; Sodium needs none), optional Dynamic FPS override (`DynamicFpsMixin`, `@Pseudo`) |
   | `server/` | Optional server install: server rules (`LensbridgeServer`), `PolicyPayload`, `ServerRules`; the client applies them in `Policy` |
-  | top level | `Capture` (grab, streams, thumbnails, contact sheets), `VideoStream` (raw frames → ffmpeg), `DirectorCamera`, `Stealth`, `UserControls` (hotkeys, drone pilot, take-control, HUD), `Shaders` (optional Iris) |
+  | top level | `Capture` (grab, streams, thumbnails, contact sheets), `VideoStream` (raw frames → ffmpeg), `DirectorCamera`, `PlayerSafety` (a staging tp, and a datapack/command-block teleport, start creative flight so they can't drop the player), `Stealth`, `UserControls` (hotkeys, drone pilot, take-control, HUD), `Shaders` (optional Iris) |
   | UI | `src/main/resources/assets/lensbridge/ui/index.html` (single file, no build step) |
 
 - **Threading:** tool handlers run on HTTP threads. Anything touching the game goes through `Game.call/run` (client thread). Never block the client thread waiting on frames; `Game.waitFrames` is for HTTP threads only.

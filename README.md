@@ -111,7 +111,7 @@ server; it hands its tools, the Camera Manager and the docs pages to Agentlink i
 | | `inspect` | crosshair block/entity, nearby entities (type, name, position, distance, HP, id), hands and hotbar |
 | | `chat_log` | received chat and system lines, numbered (`since`) |
 | | `wait` | ticks / frames / milliseconds |
-| Act | `command` / `chat` | send a command (no `/` needed) or a chat message |
+| Act | `command` / `chat` | send a command (no `/` needed) or a chat message; a tp/teleport starts creative flight first so a staging teleport can't drop you, and external teleports (datapacks, command blocks) are caught the same way |
 | | `look` | absolute yaw/pitch, or look at x/y/z |
 | | `hold_keys` | hold keys for N ticks (at most 1200 = 60 s; released when a screen opens): `forward back left right jump sneak sprint use attack drop`, or any key mapping id such as a mod hotkey |
 | | `press` | tap a key once (click) |

@@ -21,7 +21,7 @@ You are driving a **live Minecraft client** that a person may be playing or watc
 ## 1. Ground rules (non-negotiable)
 
 1. **Never use the player's own view as your camera.** Don't `look`, `hold_keys` or walk the player to frame a shot. Use the **director camera** (`camera_look_at`), **tripods**, the **drone** or **camera moves**. They're detached from the player and, with stealth capture, invisible on the player's screen.
-   - You *may* move the player near a location (e.g. `command tp`) only so its chunks load: cameras only see what's loaded around the player. Ask first if the person is playing.
+   - You *may* move the player near a location (e.g. `command tp`) only so its chunks load: cameras only see what's loaded around the player. Ask first if the person is playing. A tp starts creative flight first when the player may fly, so the jump can't drop them; the tool result says whether they are flying. Lensbridge also watches the player's position, so a teleport from a datapack function, a command block or a plugin gets the same treatment.
    - Use the player as a *subject* (e.g. drone follow) only when asked.
 2. **Clean up after yourself.** Remove cameras you placed for a job (`tripod_remove {"group":"tmp"}` removes a whole name group), `stage_clear` stages, `props {"enabled":false}`.
 3. **Don't leave the player stuck.** Finish every session with `exit_camera` (it returns the player to their own view and releases the director camera, hidden or shown) and then `restore` (it undoes what `scene` and `window_size` left changed: world freeze, the `advance_time` gamerule, shaders, window size / fullscreen). Time of day and weather are yours to put back. The player's own way out is Alt+Backspace (stops your capture) and `/lensbridge restore`.

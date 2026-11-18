@@ -34,6 +34,7 @@ public final class Lensbridge {
         config = BridgeConfig.load(FMLPaths.CONFIGDIR.get().resolve("lensbridge.json"));
         NeoForge.EVENT_BUS.addListener(Game::onFrame);
         NeoForge.EVENT_BUS.addListener(InputDriver::onTick);
+        NeoForge.EVENT_BUS.addListener(PlayerSafety::onTick);
         NeoForge.EVENT_BUS.addListener(ChatLog::onChat);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onAngles);
         NeoForge.EVENT_BUS.addListener(DirectorCamera::onFov);
